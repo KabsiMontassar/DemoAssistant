@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import ChatInterface from '@/components/ChatInterface'
-import FileUpload from '@/components/FileUpload'
 import SourceCitation from '@/components/SourceCitation'
 import axios from 'axios'
 import { BarChart3 } from 'lucide-react'
@@ -113,45 +112,8 @@ export default function Home() {
     }
   }
 
-  const handleFileUpload = async (file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    try {
-      setLoading(true)
-      setError(null)
-
-      await axios.post(`${API_BASE_URL}/api/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-
-      // Add notification message
-      const notificationMsg: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: `File "${file.name}" uploaded and processed successfully. You can now ask questions about the materials in this file.`,
-        sources: [],
-        timestamp: new Date(),
-      }
-
-      setMessages((prev) => [...prev, notificationMsg])
-      setSystemStatus('healthy')
-    } catch (err) {
-      const errorMessage = axios.isAxiosError(err)
-        ? err.response?.data?.detail || err.message
-        : 'Failed to upload file'
-
-      setError(errorMessage)
-      setSystemStatus('error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
-    <main className="h-screen flex flex-col bg-white">
+    <main className="h-screen flex flex-col bg-white relative">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -172,19 +134,6 @@ export default function Home() {
               />
             </div>
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useWebSearch}
-                  onChange={(e) => setUseWebSearch(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer"
-                  disabled={systemStatus === 'error'}
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Search Web
-                </span>
-              </label>
-              <FileUpload onFileSelect={handleFileUpload} disabled={loading || systemStatus === 'error'} />
             </div>
           </div>
           {error && (
@@ -196,7 +145,7 @@ export default function Home() {
       </header>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto bg-gray-50">
+      <div className="flex-1 overflow-y-auto bg-gray-50 pb-32">
         <div className="max-w-4xl mx-auto px-4 py-8">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -207,8 +156,8 @@ export default function Home() {
                 Material Pricing Assistant
               </h2>
               <p className="text-gray-600 max-w-md">
-                Ask questions about material pricing and project history. The system
-                will search through uploaded material documents and provide sourced answers.
+                Ask questions about material pricing and project details. The system
+                will search through material documents and provide sourced answers.
               </p>
             </div>
           ) : (
@@ -270,13 +219,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white">
-        <div className="max-w-4xl mx-auto p-4">
+      {/* Input Area - Floating */}
+      <div className="fixed bottom-10 left-0 right-0  ">
+        <div className="max-w-4xl mx-auto px-4 py-4 w-full">
           <ChatInterface
             onSendMessage={handleSendMessage}
             disabled={loading || systemStatus === 'error'}
             isLoading={loading}
+            useWebSearch={useWebSearch}
+            onWebSearchToggle={setUseWebSearch}
           />
         </div>
       </div>

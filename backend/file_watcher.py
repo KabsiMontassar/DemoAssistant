@@ -1,7 +1,8 @@
 """
 Monitors data/materials/ folder continuously
-Automatically embeds new .txt files
-Allows hot-adding materials without restart
+Automatically detects changes to .xlsx and .pdf files
+Updates embeddings and chunks when files change
+Allows hot-updating materials without restart
 """
 
 import logging
@@ -17,7 +18,8 @@ logger = logging.getLogger(__name__)
 class MaterialFileEventHandler(FileSystemEventHandler):
     """
     Handles file system events for material files.
-    Triggers re-embedding when files are created or modified.
+    Triggers re-embedding when files are created, modified, or deleted.
+    Supports .xlsx and .pdf file formats.
     """
     
     def __init__(self, embedding_manager, retriever_manager):
@@ -39,7 +41,9 @@ class MaterialFileEventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         
-        if not event.src_path.endswith('.txt'):
+        # Support .pdf and .xlsx files
+        supported_formats = {'.pdf', '.xlsx'}
+        if not any(event.src_path.lower().endswith(fmt) for fmt in supported_formats):
             return
         
         logger.info(f"New file detected: {event.src_path}")
@@ -50,7 +54,9 @@ class MaterialFileEventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         
-        if not event.src_path.endswith('.txt'):
+        # Support .pdf and .xlsx files
+        supported_formats = {'.pdf', '.xlsx'}
+        if not any(event.src_path.lower().endswith(fmt) for fmt in supported_formats):
             return
         
         # Debounce: avoid processing the same file too frequently
@@ -70,28 +76,29 @@ class MaterialFileEventHandler(FileSystemEventHandler):
     def _process_file_change(self, file_path: str, event_type: str):
         """
         Process a file change by re-embedding it.
+        Handles file creation, modification, and deletion events.
         
         Args:
             file_path: Path to the modified file
-            event_type: Type of change (created/modified)
+            event_type: Type of change (created/modified/deleted)
         """
         try:
             # Wait a moment for file to be fully written
             time.sleep(0.5)
             
-            # Verify file still exists
+            # Verify file still exists (skip if deleted)
             path = Path(file_path)
-            if not path.exists():
+            if not path.exists() and event_type != "deleted":
                 logger.warning(f"File no longer exists: {file_path}")
                 return
             
-            # Re-embed the file
+            # Re-embed the file (will clear old embeddings and create new ones)
             chunks = self.embedding_manager.embed_file(file_path)
             
             if chunks > 0:
                 logger.info(
                     f"✓ File {event_type} processed successfully. "
-                    f"Chunks created: {chunks}"
+                    f"Chunks created/updated: {chunks}"
                 )
             else:
                 logger.warning(f"No chunks created for {event_type} file: {file_path}")
@@ -106,6 +113,7 @@ class MaterialFileEventHandler(FileSystemEventHandler):
 class FileWatcher:
     """
     Watches material files directory for changes and triggers re-embedding.
+    Monitors .txt, .xlsx, and .pdf files in the folder structure.
     Runs as a background daemon thread.
     """
     
@@ -155,6 +163,7 @@ class FileWatcher:
             self._running = True
             
             logger.info(f"✓ File watcher started for: {self.watch_path}")
+            logger.info("  Monitoring for changes to: .xlsx, .pdf files")
             
         except Exception as e:
             logger.error(f"Error starting file watcher: {str(e)}", exc_info=True)

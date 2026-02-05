@@ -3,6 +3,7 @@ Uses sentence-transformers (all-MiniLM-L6-v2 model)
 Converts text into 384-dimensional vectors
 Stores vectors in ChromaDB (vector database)
 Automatically chunks long documents
+Supports .xlsx and .pdf file formats
 """
 
 import os
@@ -11,6 +12,8 @@ from pathlib import Path
 from typing import Optional
 import chromadb
 from sentence_transformers import SentenceTransformer
+import openpyxl
+from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,72 @@ class EmbeddingManager:
             device='cpu'  # Use CPU for demo (production could use GPU)
         )
         logger.info("✓ Embedding model loaded")
+    
+    def _extract_text_from_pdf(self, file_path: Path) -> str:
+        """
+        Extract text from PDF file.
+        Falls back to reading as plain text if PDF parsing fails.
+        
+        Args:
+            file_path: Path to PDF file
+            
+        Returns:
+            Extracted text from PDF
+        """
+        try:
+            text = ""
+            reader = PdfReader(file_path)
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+            return text
+        except Exception as e:
+            logger.warning(f"PDF parsing failed, attempting plain text extraction: {str(e)}")
+            # Fallback: try reading as plain text
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as text_error:
+                logger.error(f"Error extracting text from PDF {file_path}: {str(text_error)}")
+                return ""
+    
+    def _extract_text_from_xlsx(self, file_path: Path) -> str:
+        """
+        Extract text from Excel file.
+        Falls back to reading as plain text (CSV) if Excel parsing fails.
+        
+        Args:
+            file_path: Path to Excel file
+            
+        Returns:
+            Extracted text from Excel cells
+        """
+        try:
+            text = ""
+            workbook = openpyxl.load_workbook(file_path)
+            
+            for sheet_name in workbook.sheetnames:
+                sheet = workbook[sheet_name]
+                text += f"Sheet: {sheet_name}\n"
+                
+                for row in sheet.iter_rows(values_only=True):
+                    row_text = " | ".join(
+                        str(cell) if cell is not None else "" for cell in row
+                    )
+                    if row_text.strip():
+                        text += row_text + "\n"
+                
+                text += "\n"
+            
+            return text
+        except Exception as e:
+            logger.warning(f"Excel parsing failed, attempting plain text extraction: {str(e)}")
+            # Fallback: try reading as plain text (CSV format)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as text_error:
+                logger.error(f"Error extracting text from Excel {file_path}: {str(text_error)}")
+                return ""
     
     def _chunk_text(self, text: str, file_path: str) -> list[dict]:
         """
@@ -91,6 +160,7 @@ class EmbeddingManager:
     def embed_file(self, file_path: str) -> int:
         """
         Process a single file: read, chunk, embed, and store in vector DB.
+        Supports .xlsx and .pdf files.
         
         Args:
             file_path: Full path to the file to embed
@@ -107,16 +177,22 @@ class EmbeddingManager:
         if not file_path.exists():
             raise ValueError(f"File not found: {file_path}")
         
-        if not file_path.suffix == '.txt':
-            logger.warning(f"Skipping non-txt file: {file_path}")
+        # Check for supported file types
+        supported_formats = {'.xlsx', '.pdf'}
+        if file_path.suffix.lower() not in supported_formats:
+            logger.warning(f"Skipping unsupported file format: {file_path}")
             return 0
         
         try:
-            logger.info(f"Embedding file: {file_path.name}")
+            logger.info(f"Embedding file: {file_path.name} ({file_path.suffix})")
             
-            # Read file
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            # Extract content based on file type
+            if file_path.suffix.lower() == '.pdf':
+                content = self._extract_text_from_pdf(file_path)
+            elif file_path.suffix.lower() == '.xlsx':
+                content = self._extract_text_from_xlsx(file_path)
+            else:
+                return 0
             
             if not content.strip():
                 logger.warning(f"File is empty: {file_path}")
@@ -179,7 +255,7 @@ class EmbeddingManager:
     
     def embed_directory(self, directory: Optional[str] = None) -> dict:
         """
-        Recursively embed all .txt files in a directory.
+        Recursively embed all supported files (.xlsx, .pdf) in a directory.
         
         Args:
             directory: Directory path (defaults to DATA_PATH)
@@ -198,9 +274,13 @@ class EmbeddingManager:
         
         logger.info(f"Starting directory embedding: {directory}")
         
-        files = list(directory.rglob('*.txt'))
+        # Find all supported file types
+        pdf_files = list(directory.rglob('*.pdf'))
+        xlsx_files = list(directory.rglob('*.xlsx'))
+        files = pdf_files + xlsx_files
+        
         if not files:
-            logger.warning(f"No .txt files found in {directory}")
+            logger.warning(f"No supported files found in {directory}")
             return {
                 "status": "success",
                 "message": "No files to process",

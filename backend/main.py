@@ -1,6 +1,6 @@
 """
 Material Pricing AI Assistant - Backend API
-Main FastAPI application for handling chat requests, file uploads, and embeddings.
+Main FastAPI application for handling chat requests and embeddings.
 """
 
 import os
@@ -10,7 +10,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -48,7 +48,7 @@ file_watcher = None
 async def lifespan(app: FastAPI):
     """
     Application startup and shutdown lifecycle management.
-    Initializes all managers and file watchers on startup.
+    Initializes all managers and file watcher on startup.
     """
     global embedding_manager, retriever_manager, llm_manager, file_watcher
     
@@ -67,19 +67,19 @@ async def lifespan(app: FastAPI):
         llm_manager = LLMManager()
         logger.info("✓ LLM manager initialized")
         
-        # Initialize file watcher for automatic re-embedding
+        # Initial embedding of existing files
+        logger.info("Performing initial embedding of existing files...")
+        embedding_manager.embed_directory()
+        logger.info("✓ Initial embedding complete")
+        
+        # Initialize file watcher for automatic re-embedding on structure changes
         file_watcher = FileWatcher(
             watch_path=os.getenv('DATA_PATH', './data/materials'),
             embedding_manager=embedding_manager,
             retriever_manager=retriever_manager
         )
         file_watcher.start()
-        logger.info("✓ File watcher initialized")
-        
-        # Initial embedding of existing files
-        logger.info("Performing initial embedding of existing files...")
-        embedding_manager.embed_directory()
-        logger.info("✓ Initial embedding complete")
+        logger.info("✓ File watcher started - monitoring structure for changes")
         
         yield
         
@@ -142,13 +142,6 @@ class ChatResponse(BaseModel):
     response: str
     sources: list[SourceCitation]
     web_search_used: bool
-
-
-class FileUploadResponse(BaseModel):
-    """Response model for file upload."""
-    filename: str
-    status: str
-    message: str
 
 
 class HealthResponse(BaseModel):
@@ -269,65 +262,6 @@ async def chat(request: ChatRequest):
             raise HTTPException(status_code=500, detail=f"Error processing request: {error_msg}")
 
 
-@app.post("/api/upload", response_model=FileUploadResponse)
-async def upload_file(file: UploadFile = File(...)):
-    """
-    File upload endpoint for adding new material documents.
-    
-    Args:
-        file: Uploaded file
-        
-    Returns:
-        FileUploadResponse with upload status
-        
-    Raises:
-        HTTPException: If file is invalid or upload fails
-    """
-    # Validate file
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-    
-    if not file.filename.endswith('.txt'):
-        raise HTTPException(status_code=400, detail="Only .txt files are supported")
-    
-    if file.size and file.size > 10 * 1024 * 1024:  # 10MB limit
-        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
-    
-    try:
-        logger.info(f"Processing file upload: {file.filename}")
-        
-        # Verify managers are initialized
-        if not all([embedding_manager, retriever_manager]):
-            raise HTTPException(status_code=503, detail="Service not fully initialized")
-        
-        # Read file content
-        content = await file.read()
-        if not content:
-            raise HTTPException(status_code=400, detail="File is empty")
-        
-        # Save file to materials directory
-        file_path = Path(os.getenv('DATA_PATH', './data/materials')) / file.filename
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(file_path, 'wb') as f:
-            f.write(content)
-        
-        # Embed the new file
-        embedding_manager.embed_file(str(file_path))
-        
-        logger.info(f"✓ File uploaded and embedded: {file.filename}")
-        
-        return FileUploadResponse(
-            filename=file.filename,
-            status="success",
-            message=f"File '{file.filename}' uploaded and processed successfully"
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error uploading file: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error uploading file")
 
 
 @app.get("/api/stats")

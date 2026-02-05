@@ -1,0 +1,41 @@
+Material: Marble - Italian Carrara
+Category: Natural Stone
+Unit: Square Meter (m²)
+
+PROJECT PRICING HISTORY:
+------------------------
+
+Project: Luxury Villa Flooring
+Date: 2024-01-08
+Price: €280/m²
+Quantity: 120 m²
+Notes: Premium white grade, polished finish
+
+Project: Corporate Lobby Cladding
+Date: 2024-02-18
+Price: €260/m²
+Quantity: 85 m²
+Notes: Standard white, honed finish
+
+Project: High-End Hotel Bathrooms
+Date: 2024-03-25
+Price: €320/m²
+Quantity: 40 m²
+Notes: Veined selection, premium grade
+
+SPECIFICATIONS:
+--------------
+- Available Finishes: Polished, honed, bush-hammered
+- Thickness: 20-40mm standard
+- Standard Size: 600×600mm to 1000×1000mm
+- Color Variations: Pure white to veined
+- Supplier: Italian Stone Importers Ltd.
+- Lead Time: 2-3 weeks
+
+NOTES:
+------
+Premium natural stone for luxury applications
+Price varies significantly with color variation
+Veined grades command premium pricing
+Sensitive to acidic environments (maintenance required)
+Installation requires skilled craftsmen

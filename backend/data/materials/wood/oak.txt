@@ -1,0 +1,40 @@
+Material: Oak Wood - European White Oak
+Category: Hardwood
+Unit: Cubic Meter (m³)
+
+PROJECT PRICING HISTORY:
+------------------------
+
+Project: Villa Moderne Residence
+Date: 2024-01-15
+Price: €450/m³
+Quantity: 12 m³
+Notes: Premium grade, kiln-dried
+
+Project: Corporate Office Renovation
+Date: 2024-02-20
+Price: €475/m³
+Quantity: 8 m³
+Notes: Special cut requirements
+
+Project: Restaurant Interior
+Date: 2024-03-10
+Price: €460/m³
+Quantity: 15 m³
+Notes: Standard grade
+
+SPECIFICATIONS:
+--------------
+- Moisture Content: 8-10%
+- Thickness: 25-50mm available
+- Length: Up to 3m standard
+- Supplier: Nordic Wood Supply Co.
+- Lead Time: 2-3 weeks
+
+NOTES:
+------
+Price variations based on:
+- Order quantity (bulk discounts available)
+- Seasonal availability
+- Special cutting requirements
+- Finishing specifications

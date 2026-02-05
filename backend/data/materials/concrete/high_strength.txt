@@ -1,0 +1,39 @@
+Material: High-Strength Concrete Mix
+Category: Concrete
+Unit: Cubic Meter (m³)
+
+PROJECT PRICING HISTORY:
+------------------------
+
+Project: High-Rise Building Foundation
+Date: 2024-01-22
+Price: €145/m³
+Quantity: 80 m³
+Notes: C50/60 strength class with fiber reinforcement
+
+Project: Bridge Deck Construction
+Date: 2024-02-28
+Price: €155/m³
+Quantity: 60 m³
+Notes: C60/75 with waterproofing admixture
+
+Project: Precast Element Manufacturing
+Date: 2024-03-20
+Price: €138/m³
+Quantity: 40 m³
+Notes: C40/50 with early strength additives
+
+SPECIFICATIONS:
+--------------
+- Strength Classes Available: C40/50, C50/60, C60/75
+- Slump: 80-120mm
+- Water/Cement Ratio: Optimized
+- Maximum Aggregate Size: 16mm
+- Supplier: Premium Concrete Solutions
+
+NOTES:
+------
+Premium pricing for strength and durability
+Requires specialized finishing equipment
+Higher cost additives improve performance
+Best suited for structural critical elements

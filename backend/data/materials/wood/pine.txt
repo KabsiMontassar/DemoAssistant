@@ -1,0 +1,38 @@
+Material: Pine Wood - Nordic Pine
+Category: Softwood
+Unit: Cubic Meter (m³)
+
+PROJECT PRICING HISTORY:
+------------------------
+
+Project: Industrial Warehouse Flooring
+Date: 2024-01-20
+Price: €180/m³
+Quantity: 45 m³
+Notes: Standard rough cut
+
+Project: Residential Construction Phase 2
+Date: 2024-02-15
+Price: €190/m³
+Quantity: 28 m³
+Notes: Planed finish, moisture controlled
+
+Project: Furniture Manufacturing
+Date: 2024-03-05
+Price: €175/m³
+Quantity: 32 m³
+Notes: Kiln-dried, prime grade
+
+SPECIFICATIONS:
+--------------
+- Moisture Content: 10-12%
+- Thickness: 19-50mm available
+- Length: Up to 6m standard
+- Supplier: Scandinavian Timber Ltd.
+- Lead Time: 1-2 weeks
+
+NOTES:
+------
+Most economical softwood option
+Suitable for structural and decorative applications
+Price sensitive to seasonal demand

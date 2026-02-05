@@ -1,0 +1,40 @@
+Material: Lightweight Concrete Mix
+Category: Concrete
+Unit: Cubic Meter (m³)
+
+PROJECT PRICING HISTORY:
+------------------------
+
+Project: Multi-Story Residential Building
+Date: 2024-01-18
+Price: €110/m³
+Quantity: 200 m³
+Notes: Expanded clay aggregate, reduced weight
+
+Project: Wall Infill System
+Date: 2024-02-10
+Price: €105/m³
+Quantity: 150 m³
+Notes: AAC blocks manufacturing
+
+Project: Thermal Insulation Layer
+Date: 2024-03-12
+Price: €115/m³
+Quantity: 80 m³
+Notes: Combined thermal and structural properties
+
+SPECIFICATIONS:
+--------------
+- Density: 1400-1800 kg/m³
+- Strength Classes: LC20/22 to LC35/38
+- Thermal Conductivity: 0.3-0.5 W/mK
+- Fire Rating: Excellent
+- Supplier: Lightweight Materials Corp.
+
+NOTES:
+------
+Excellent for weight reduction
+Superior thermal insulation properties
+Faster construction due to easier handling
+Slightly higher unit cost but overall savings
+Ideal for retrofitting existing structures

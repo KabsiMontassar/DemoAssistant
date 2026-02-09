@@ -6,19 +6,18 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with memory-saving settings
+RUN npm config set progress false && \
+    npm config set max-sockets 2 && \
+    npm ci --no-audit
 
 # Copy source code
 COPY . .
 
-# Build Next.js app
-# Note: In Next.js, env variables starting with NEXT_PUBLIC_ 
-# are inlined at build time. We use dummy value to allow 
-# runtime override or ensure build succeeds.
+# Build Next.js app with memory limits
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=768" npm run build
 
 # Production stage
 FROM node:18-alpine AS runner

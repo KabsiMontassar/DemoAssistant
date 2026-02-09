@@ -7,3 +7,4 @@
 /frontend/.next 
 /frontend/dist
 /frontend/.env.local
+/deployment/azure-aci.yaml

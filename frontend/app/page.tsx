@@ -88,7 +88,7 @@ export default function Home() {
         content: response.data.response,
         sources: response.data.sources || [],
         timestamp: new Date(),
-        usedWebSearch: useWebSearch,
+        usedWebSearch: response.data.web_search_used,
       }
 
       setMessages((prev) => [...prev, assistantMessage])

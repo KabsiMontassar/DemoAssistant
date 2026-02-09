@@ -4,6 +4,7 @@ Main FastAPI application for handling chat requests and embeddings.
 """
 
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import sys
 import logging
 from pathlib import Path
@@ -251,56 +252,54 @@ async def chat(request: ChatRequest):
         # Step 1: Retrieve relevant chunks from vector DB
         retrieved = retriever_manager.retrieve(query=request.query, top_k=10)
         
-        if not retrieved:
+        chunks = []
+        vector_scores = []
+        
+        if retrieved:
+            # Format retrieved results into chunks with metadata
+            for r in retrieved:
+                chunks.append({
+                    "text": r.get("content", ""),
+                    "metadata": {
+                        "file_path": r.get("file_path", "unknown"),
+                        "chunk_index": r.get("chunk_index", 0),
+                        "semantic_type": "general"
+                    }
+                })
+                vector_scores.append(r.get("score", 0))
+        
+        # Step 2: Rank results with scoring (if any local chunks)
+        ranked = []
+        if chunks:
+            ranked = ranking_engine.rank_results(
+                chunks=chunks,
+                vector_scores=vector_scores,
+                top_k=10,
+                min_confidence="low"
+            )
+        
+        # Step 3: RE-RANK with query-aware re-ranking (if any ranked chunks)
+        reranked = []
+        if ranked:
+            reranked = reranking_engine.rerank_with_relevance_scoring(
+                query=request.query,
+                chunks=ranked,
+                top_k=5
+            )
+            
+            # Check if confidence should be reduced based on re-ranking
+            if reranked and reranking_engine.should_confidence_be_reduced(request.query, reranked[0]):
+                logger.warning("Re-ranking detected weak match, reducing confidence")
+                for chunk in reranked:
+                    chunk["scores"]["confidence"] = "low"
+        
+        # Guard: If no local results AND no web search, then return early
+        if not reranked and not request.use_web_search:
             return ChatResponse(
                 response="I couldn't find any specific information matching your query in the Atlas database. Please try broadening your search or enabling web search for current market data.",
                 sources=[],
                 web_search_used=False
             )
-        
-        # Format retrieved results into chunks with metadata
-        chunks = []
-        vector_scores = []
-        for r in retrieved:
-            chunks.append({
-                "text": r.get("content", ""),
-                "metadata": {
-                    "file_path": r.get("file_path", "unknown"),
-                    "chunk_index": r.get("chunk_index", 0),
-                    "semantic_type": "general"
-                }
-            })
-            vector_scores.append(r.get("score", 0))
-        
-        # Step 2: Rank results with scoring
-        ranked = ranking_engine.rank_results(
-            chunks=chunks,
-            vector_scores=vector_scores,
-            top_k=10,
-            min_confidence="low"
-        )
-        
-        if not ranked:
-            return ChatResponse(
-                response="No relevant information found. Please try a different query.",
-                sources=[],
-                web_search_used=False
-            )
-        
-        # Step 3: RE-RANK with query-aware re-ranking (reduce hallucination)
-        reranked = reranking_engine.rerank_with_relevance_scoring(
-            query=request.query,
-            chunks=ranked,
-            top_k=5
-        )
-        
-        logger.info(f"Re-ranked results: {len(reranked)} chunks for LLM")
-        
-        # Check if confidence should be reduced based on re-ranking
-        if reranked and reranking_engine.should_confidence_be_reduced(request.query, reranked[0]):
-            logger.warning("Re-ranking detected weak match, reducing confidence")
-            for chunk in reranked:
-                chunk["scores"]["confidence"] = "low"
         
         # Step 4: Generate answer using LLM
         answer_result = llm_manager.generate_answer(
@@ -309,7 +308,7 @@ async def chat(request: ChatRequest):
             use_web_search=request.use_web_search
         )
         
-        # Step 5: Format source citations
+        # Step 5: Format source citations (Local)
         sources = [
             SourceCitation(
                 file_path=chunk["source"]["file_path"],
@@ -319,6 +318,17 @@ async def chat(request: ChatRequest):
             for chunk in ranking_engine.format_batch(reranked)
         ]
         
+        # Step 6: Add Web Sources (if any)
+        if "web_sources" in answer_result:
+            for ws in answer_result["web_sources"]:
+                sources.append(
+                    SourceCitation(
+                        file_path=ws["url"] if ws["url"] else f"Web: {ws['title']}",
+                        content_snippet=ws["content"],
+                        relevance_score=0.95  # Slightly lower than top matches but still high
+                    )
+                )
+        
         # Filter out sources if the AI provides a negative response
         negative_keywords = ["don't have that information", "couldn't find any specific information", "information not found"]
         if any(keyword in answer_result["answer"].lower() for keyword in negative_keywords):
@@ -327,7 +337,7 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             response=answer_result["answer"],
             sources=sources,
-            web_search_used=request.use_web_search
+            web_search_used=answer_result["web_search_used"]
         )
         
     except Exception as e:

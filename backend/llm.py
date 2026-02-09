@@ -50,7 +50,7 @@ class LLMManager:
         if self.tavily_client:
             logger.info("Web search enabled via Tavily API")
     
-    def _search_web(self, query: str, max_results: int = 5) -> str:
+    def _search_web(self, query: str, max_results: int = 5) -> list:
         """
         Perform web search using Tavily API.
         
@@ -59,30 +59,22 @@ class LLMManager:
             max_results: Maximum number of results to retrieve
             
         Returns:
-            Formatted web search results
+            List of search result dictionaries
         """
         if not self.tavily_client:
-            return ""
+            return []
         
         try:
             logger.info(f"Performing web search for: {query[:100]}...")
             response = self.tavily_client.search(query=query, max_results=max_results)
             
-            if not response.get('results'):
-                return ""
-            
-            # Format search results
-            web_results = "CURRENT WEB SEARCH RESULTS:\n"
-            for result in response['results']:
-                web_results += f"\n- Source: {result.get('title', 'Unknown')}\n"
-                web_results += f"  Content: {result.get('content', '')[:300]}...\n"
-            
-            logger.info(f"Web search returned {len(response.get('results', []))} results")
-            return web_results
+            results = response.get('results', [])
+            logger.info(f"Web search returned {len(results)} results")
+            return results
             
         except Exception as e:
             logger.error(f"Web search error: {str(e)}")
-            return ""
+            return []
     
     def _construct_system_prompt(self) -> str:
         """
@@ -94,17 +86,17 @@ Your sole responsibility is to provide precise, verifiable answers strictly grou
 
 OPERATING RULES (STRICT):
 1. GROUNDING:
-   - Use ONLY the information explicitly present in the provided context.
+   - Use ONLY the information explicitly present in the provided context (Project Documents AND Web Search Results).
    - NEVER infer, estimate, interpolate, or assume missing values.
    - If a value is not present, it must not appear in the answer.
 
 2. ACCURACY:
-   - Provide prices, dates, and specifications EXACTLY as they appear in the documents.
-   - If multiple contradictory values exist, cite both with their respective sources.
+   - Provide prices, dates, and specifications EXACTLY as they appear in the documents or search results.
+   - If multiple contradictory values exist (e.g., project price vs current market price), cite both with their respective sources.
 
 3. AMBIGUITY HANDLING:
    - If the user query is vague (e.g., "dsq"), and there is relevant context, provide a summary of the available information.
-   - If NO valid context exists, state clearly: "I could not find information about [query] in the available project documents."
+   - If NO valid context exists after checking both documents and web search, state clearly: "I could not find information about [query] in the available project documents or current market data."
 
 4. FORMAT:
    - Use standard professional formatting.
@@ -126,31 +118,25 @@ RESPONSE STRUCTURE:
         self,
         query: str,
         context: str,
-        web_search_results: str = "",
-        use_web_search: bool = False
+        web_search_results: str = ""
     ) -> str:
         """
         Construct the user message prompt with context and instructions.
-        
-        Args:
-            query: User's question
-            context: Retrieved document context
-            web_search_results: Web search results if available
-            use_web_search: Whether web search is enabled
-            
-        Returns:
-            Formatted user prompt
         """
         prompt = f"""
-CONTEXT INFORMATION:
+PROJECT DOCUMENTS CONTEXT:
 ---
 {context}
+---
+
+WEB SEARCH RESULTS (CURRENT MARKET DATA):
+---
 {web_search_results}
 ---
 
 USER QUERY: {query}
 
-Provide a factual answer based ONLY on the context above. If the query is just a keyword or shorthand, provide a summary of the most relevant prices or specs found in the context.
+Provide a factual answer based ONLY on the context blocks above. Prioritize Project Documents if they exist, but use Web Search Results for current market comparisons or if project data is missing.
 """
         return prompt
     
@@ -187,9 +173,37 @@ Provide a factual answer based ONLY on the context above. If the query is just a
             
             context = "\n\n".join(context_lines)
             
-            # Generate response
-            response = self.generate_response(query, context, use_web_search)
+            # Perform web search if requested
+            web_search_results_raw = []
+            actual_search_used = False
+            if use_web_search:
+                web_search_results_raw = self._search_web(query)
+                if web_search_results_raw:
+                    actual_search_used = True
             
+            # Format web search results for prompt
+            web_context = ""
+            if web_search_results_raw:
+                web_context_lines = []
+                for res in web_search_results_raw:
+                    title = res.get('title', 'Web Result')
+                    url = res.get('url', 'N/A')
+                    content = res.get('content', '')
+                    web_context_lines.append(f"SOURCE [Web]: {title} ({url})\nCONTENT: {content}")
+                web_context = "\n\n".join(web_context_lines)
+
+            # Generate response
+            response, _ = self.generate_response(query, context, web_context)
+            
+            # Collect web sources for main to use
+            web_sources = []
+            for res in web_search_results_raw:
+                web_sources.append({
+                    "title": res.get('title', 'Web Result'),
+                    "url": res.get('url', ''),
+                    "content": res.get('content', '')[:200]
+                })
+
             # Extract confidence from chunks if available
             confidences = [c.get("scores", {}).get("confidence", "low") 
                           for c in retrieved_chunks]
@@ -199,7 +213,9 @@ Provide a factual answer based ONLY on the context above. If the query is just a
                 "answer": response,
                 "confidence": confidence_level,
                 "sources": list(sources),
-                "chunks_used": len(retrieved_chunks)
+                "web_sources": web_sources,
+                "chunks_used": len(retrieved_chunks),
+                "web_search_used": actual_search_used
             }
             
         except Exception as e:
@@ -210,15 +226,15 @@ Provide a factual answer based ONLY on the context above. If the query is just a
         self,
         query: str,
         context: str,
-        use_web_search: bool = False
-    ) -> str:
+        web_context: str = ""
+    ) -> tuple[str, bool]:
         """
         Generate an AI response to a user query using retrieved context.
         
         Args:
             query: User's question
             context: Retrieved document context
-            use_web_search: Whether to include web search in consideration
+            web_context: Formatted web search results to include in the prompt
             
         Returns:
             Generated response from the LLM
@@ -227,16 +243,12 @@ Provide a factual answer based ONLY on the context above. If the query is just a
             Exception: If API call fails or response is invalid
         """
         try:
-            # Perform web search if enabled
-            web_search_results = ""
-            if use_web_search and self.tavily_client:
-                web_search_results = self._search_web(query)
-            
             # Construct prompts
             system_prompt = self._construct_system_prompt()
-            user_prompt = self._construct_user_prompt(query, context, web_search_results, use_web_search)
+            user_prompt = self._construct_user_prompt(query, context, web_context)
             
-            logger.info("Calling OpenRouter API...")
+            actual_search_used = bool(web_context)
+            logger.info(f"Calling OpenRouter API (Search context present: {actual_search_used})...")
             
             # Prepare API request
             headers = {
@@ -312,7 +324,7 @@ Provide a factual answer based ONLY on the context above. If the query is just a
                 )
             
             logger.info("✓ Response generated successfully")
-            return message
+            return message, actual_search_used
             
         except httpx.TimeoutException:
             error_msg = "API request timed out. Please try again."

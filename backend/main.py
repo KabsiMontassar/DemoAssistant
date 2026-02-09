@@ -12,8 +12,10 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
+import json
 
 from embedding import EmbeddingManager
 from retrieval import RetrieverManager
@@ -102,11 +104,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
+# Configure CORS - Allow all origins for development
+# This is needed for WebSocket connections from the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -310,9 +312,128 @@ async def reprocess_files():
         raise HTTPException(status_code=500, detail="Error reprocessing files")
 
 
+@app.get("/api/file-structure")
+async def get_file_structure():
+    """
+    Get the file structure of the materials data directory.
+    
+    Returns:
+        list: Hierarchical file structure
+    """
+    try:
+        data_path = os.getenv('DATA_PATH', './data/materials')
+        materials_path = os.path.join(data_path, 'materials')
+        
+        # Check if materials directory exists
+        if not os.path.exists(materials_path):
+            materials_path = data_path
+        
+        # Build the tree structure
+        file_structure = build_file_tree(materials_path)
+        return file_structure
+        
+    except Exception as e:
+        logger.error(f"Error getting file structure: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error retrieving file structure")
+
+
+@app.get("/api/download")
+async def download_file(path: str):
+    """
+    Download a file from the materials directory.
+    
+    Args:
+        path: Relative path to the file within materials
+        
+    Returns:
+        FileResponse: The file to download
+    """
+    try:
+        data_path = os.getenv('DATA_PATH', './data/materials')
+        
+        # Construct the full file path
+        if path.startswith('materials/'):
+            base_path = data_path
+        else:
+            base_path = os.path.join(data_path, 'materials')
+        
+        full_path = os.path.join(base_path, path)
+        
+        # Resolve the path to prevent directory traversal attacks
+        full_path = os.path.abspath(full_path)
+        base_abs = os.path.abspath(base_path)
+        
+        # Verify the file is within the data directory
+        if not full_path.startswith(base_abs):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Check if file exists
+        if not os.path.exists(full_path) or not os.path.isfile(full_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get the file name for the download
+        file_name = os.path.basename(full_path)
+        
+        return FileResponse(
+            path=full_path,
+            filename=file_name,
+            media_type='application/octet-stream'
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error downloading file")
+
+
+def build_file_tree(directory: str, relative_path: str = ""):
+    """
+    Recursively build a file tree structure.
+    
+    Args:
+        directory: Full path to directory
+        relative_path: Relative path for display
+        
+    Returns:
+        dict with name, type, path, and children if folder
+    """
+    try:
+        path = Path(directory)
+        items = []
+        
+        # Sort items alphabetically, folders first
+        sorted_items = sorted(path.iterdir(), key=lambda x: (x.is_file(), x.name))
+        
+        for item in sorted_items:
+            rel_path = f"{relative_path}/{item.name}" if relative_path else item.name
+            
+            if item.is_dir() and not item.name.startswith('.'):
+                # Recursively get children
+                children = build_file_tree(str(item), rel_path)
+                items.append({
+                    "name": item.name,
+                    "type": "folder",
+                    "path": rel_path,
+                    "children": children
+                })
+            elif item.is_file() and not item.name.startswith('.'):
+                items.append({
+                    "name": item.name,
+                    "type": "file",
+                    "path": rel_path
+                })
+        
+        return items
+    except Exception as e:
+        logger.error(f"Error building file tree for {directory}: {str(e)}")
+        return []
+
+
 # ============================================================================
 # Startup and Main
 # ============================================================================
+
 
 @app.get("/")
 async def root():
@@ -332,9 +453,9 @@ if __name__ == "__main__":
     logger.info(f"Starting backend server on {host}:{port}...")
     
     uvicorn.run(
-        "main:app",
+        app,
         host=host,
         port=port,
-        reload=True,
+        reload=False,
         log_level="info"
     )

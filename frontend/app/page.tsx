@@ -113,10 +113,10 @@ export default function Home() {
   }
 
   return (
-    <main className="h-screen flex flex-col bg-white relative">
+    <div className="h-full flex flex-col bg-white relative">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+      <header className="border-b border-gray-200 bg-white shadow-sm flex-shrink-0">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">
@@ -220,7 +220,7 @@ export default function Home() {
       </div>
 
       {/* Input Area - Floating */}
-      <div className="fixed bottom-10 left-0 right-0  ">
+      <div className="fixed bottom-10 left-64 right-0">
         <div className="max-w-4xl mx-auto px-4 py-4 w-full">
           <ChatInterface
             onSendMessage={handleSendMessage}
@@ -231,6 +231,6 @@ export default function Home() {
           />
         </div>
       </div>
-    </main>
+    </div>
   )
 }

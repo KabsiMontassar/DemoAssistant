@@ -35,3 +35,22 @@ body {
   background-size: 32px 32px;
   background-attachment: fixed;
 }
+
+/* Prose and Table Refinements */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.prose th {
+  text-align: left;
+  background-color: rgba(239, 246, 255, 0.5); /* blue-50/50 */
+}
+
+.prose td, .prose th {
+  padding: 0.75rem 1rem;
+}
+
+.prose tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5); /* slate-50/50 */
+}

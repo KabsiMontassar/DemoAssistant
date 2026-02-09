@@ -18,7 +18,7 @@ export default function Sidebar() {
 
   const fetchFileStructure = async () => {
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const apiBaseUrl = 'http://localhost:8000'
       const response = await fetch(`${apiBaseUrl}/api/file-structure`)
       const data = await response.json()
       setFileStructure(data)

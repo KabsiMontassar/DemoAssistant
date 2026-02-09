@@ -5,9 +5,10 @@ import ChatInterface from '@/components/ChatInterface'
 import SourceCitation from '@/components/SourceCitation'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Globe } from 'lucide-react'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = 'http://localhost:8000'
 
 interface Message {
   id: string
@@ -188,14 +189,24 @@ export default function Home() {
 
                         <div className="prose prose-slate max-w-none prose-p:leading-relaxed prose-headings:font-bold prose-strong:font-bold prose-li:marker:text-blue-600">
                           <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
                             components={{
-                              h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-6 mb-3 text-slate-900" {...props} />,
+                              h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-6 mb-3 text-slate-900 border-b border-blue-100 pb-1" {...props} />,
                               h3: ({ node, ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800" {...props} />,
-                              p: ({ node, ...props }) => <p className="mb-3 text-[15px] text-slate-700" {...props} />,
+                              p: ({ node, ...props }) => <p className="mb-3 text-[15px] text-slate-700 leading-relaxed" {...props} />,
                               ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-4 space-y-1" {...props} />,
                               li: ({ node, ...props }) => <li className="text-slate-700 pl-1" {...props} />,
                               strong: ({ node, ...props }) => <strong className="font-bold text-slate-900" {...props} />,
                               a: ({ node, ...props }) => <a className="text-blue-600 hover:underline" {...props} />,
+                              table: ({ node, ...props }) => (
+                                <div className="overflow-x-auto my-6 border border-blue-100 rounded-lg shadow-sm">
+                                  <table className="min-w-full divide-y divide-blue-100 bg-white" {...props} />
+                                </div>
+                              ),
+                              thead: ({ node, ...props }) => <thead className="bg-blue-50/50" {...props} />,
+                              th: ({ node, ...props }) => <th className="px-4 py-2.5 text-left text-[13px] font-bold text-blue-900 uppercase tracking-wider" {...props} />,
+                              td: ({ node, ...props }) => <td className="px-4 py-2.5 text-[14px] text-slate-700 border-t border-blue-50" {...props} />,
+                              tbody: ({ node, ...props }) => <tbody className="divide-y divide-blue-50" {...props} />,
                             }}
                           >
                             {message.content}

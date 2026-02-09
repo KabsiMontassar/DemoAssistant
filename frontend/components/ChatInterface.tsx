@@ -66,15 +66,7 @@ export default function ChatInterface({
             <div className={`relative bg-white rounded-xl overflow-hidden transition-all duration-300 ${isFocused ? 'shadow-lg shadow-blue-100/50' : ''}`}>
               {/* Input Area */}
               <div className="flex items-start p-1 min-h-[56px]">
-                {/* Web Search Indicator in Input */}
-                {useWebSearch && (
-                  <div className="pl-4 pr-1 pt-4">
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 border border-blue-100">
-                      <Search className="w-3.5 h-3.5 text-blue-600" />
-                    </div>
-                  </div>
-                )}
-
+              
                 {/* Textarea for Multi-line Support */}
                 <div className="flex-1 relative">
                   <textarea
@@ -136,7 +128,7 @@ export default function ChatInterface({
                     disabled={disabled || !input.trim() || isLoading}
                     className={`p-2.5 rounded-xl flex items-center justify-center transition-all duration-300 ${disabled || !input.trim() || isLoading
                       ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                      : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/40 hover:shadow-blue-600/50 hover:scale-105 active:scale-95'
+                      : 'bg-blue-600 text-white hover:scale-105 active:scale-95'
                       }`}
                   >
                     <Send size={18} strokeWidth={2.5} />

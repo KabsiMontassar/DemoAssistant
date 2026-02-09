@@ -3,7 +3,7 @@ version: "3.8"
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: material-pricing-backend
     restart: always
@@ -18,14 +18,12 @@ services:
       - BACKEND_PORT=8000
       - TF_ENABLE_ONEDNN_OPTS=0
     volumes:
-      - ./backend/data:/app/data
+      - ./data:/app/data
     deploy:
       resources:
         limits:
           cpus: '0.70'
           memory: 600M
-    networks:
-      - material-pricing-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -33,30 +31,9 @@ services:
       retries: 3
       start_period: 40s
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: material-pricing-frontend
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
-      - NODE_ENV=production
-    deploy:
-      resources:
-        limits:
-          cpus: '0.30'
-          memory: 200M
-    networks:
-      - material-pricing-network
-    depends_on:
-      backend:
-        condition: service_healthy
-
 networks:
-  material-pricing-network:
+  default:
+    name: material-pricing-network
     driver: bridge
 
 volumes:

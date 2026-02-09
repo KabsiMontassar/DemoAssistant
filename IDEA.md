@@ -280,7 +280,7 @@ Sources:
 
 | Layer     | POC      | Production          |
 | --------- | -------- | ------------------- |
-| Vector DB | Chroma   | Qdrant / Weaviate   |MontassarDrag&1
+| Vector DB | Chroma   | Qdrant / Weaviate   |
 | Ingestion | Script   | Distributed workers |
 | Storage   | Local FS | Object storage      |
 | Retrieval | Basic    | Hybrid + rerank     |

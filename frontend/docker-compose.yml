@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: material-pricing-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Set this to the public IP or domain of your backend server
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
+          memory: 200M
+
+networks:
+  default:
+    name: material-pricing-network
+    driver: bridge

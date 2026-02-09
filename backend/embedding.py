@@ -115,6 +115,29 @@ class EmbeddingManager:
                 logger.error(f"Error extracting text from Excel {file_path}: {str(text_error)}")
                 return ""
     
+    def _extract_text_from_csv(self, file_path: Path) -> str:
+        """
+        Extract text from CSV file.
+        
+        Args:
+            file_path: Path to CSV file
+            
+        Returns:
+            Extracted text from CSV
+        """
+        try:
+            text = ""
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # Read all lines and preserve structure
+                lines = f.readlines()
+                for line in lines:
+                    text += line
+            return text
+        except Exception as e:
+            logger.error(f"Error extracting text from CSV {file_path}: {str(e)}")
+            return ""
+
+    
     def _chunk_text(self, text: str, file_path: str) -> list[dict]:
         """
         Split text into overlapping chunks for better embedding quality.
@@ -160,7 +183,7 @@ class EmbeddingManager:
     def embed_file(self, file_path: str) -> int:
         """
         Process a single file: read, chunk, embed, and store in vector DB.
-        Supports .xlsx and .pdf files.
+        Supports .xlsx, .pdf, and .csv files.
         
         Args:
             file_path: Full path to the file to embed
@@ -178,7 +201,7 @@ class EmbeddingManager:
             raise ValueError(f"File not found: {file_path}")
         
         # Check for supported file types
-        supported_formats = {'.xlsx', '.pdf'}
+        supported_formats = {'.xlsx', '.pdf', '.csv'}
         if file_path.suffix.lower() not in supported_formats:
             logger.warning(f"Skipping unsupported file format: {file_path}")
             return 0
@@ -191,6 +214,8 @@ class EmbeddingManager:
                 content = self._extract_text_from_pdf(file_path)
             elif file_path.suffix.lower() == '.xlsx':
                 content = self._extract_text_from_xlsx(file_path)
+            elif file_path.suffix.lower() == '.csv':
+                content = self._extract_text_from_csv(file_path)
             else:
                 return 0
             
@@ -255,7 +280,7 @@ class EmbeddingManager:
     
     def embed_directory(self, directory: Optional[str] = None) -> dict:
         """
-        Recursively embed all supported files (.xlsx, .pdf) in a directory.
+        Recursively embed all supported files (.xlsx, .pdf, .csv) in a directory.
         
         Args:
             directory: Directory path (defaults to DATA_PATH)
@@ -277,7 +302,8 @@ class EmbeddingManager:
         # Find all supported file types
         pdf_files = list(directory.rglob('*.pdf'))
         xlsx_files = list(directory.rglob('*.xlsx'))
-        files = pdf_files + xlsx_files
+        csv_files = list(directory.rglob('*.csv'))
+        files = pdf_files + xlsx_files + csv_files
         
         if not files:
             logger.warning(f"No supported files found in {directory}")

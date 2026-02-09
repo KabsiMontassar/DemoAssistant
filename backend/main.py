@@ -21,6 +21,12 @@ from embedding import EmbeddingManager
 from retrieval import RetrieverManager
 from llm import LLMManager
 from file_watcher import FileWatcher
+from content_extraction import ContentExtractor
+from chunking import ChunkManager
+from scoring import ScoringEngine, RankingEngine
+from metadata_tracker import FileMetadataTracker
+from hybrid_retrieval import HybridRetriever
+from reranking import ReRankingEngine
 
 # Configure logging
 logging.basicConfig(
@@ -44,6 +50,13 @@ embedding_manager = None
 retriever_manager = None
 llm_manager = None
 file_watcher = None
+content_extractor = None
+chunk_manager = None
+scoring_engine = None
+ranking_engine = None
+metadata_tracker = None
+hybrid_retriever = None
+reranking_engine = None
 
 
 @asynccontextmanager
@@ -53,9 +66,31 @@ async def lifespan(app: FastAPI):
     Initializes all managers and file watcher on startup.
     """
     global embedding_manager, retriever_manager, llm_manager, file_watcher
+    global content_extractor, chunk_manager, scoring_engine, ranking_engine, metadata_tracker, hybrid_retriever, reranking_engine
     
     try:
         logger.info("Initializing backend components...")
+        
+        # Initialize content extraction
+        content_extractor = ContentExtractor()
+        logger.info("✓ Content extractor initialized")
+        
+        # Initialize chunking
+        chunk_manager = ChunkManager()
+        logger.info("✓ Chunk manager initialized")
+        
+        # Initialize scoring and ranking
+        scoring_engine = ScoringEngine()
+        ranking_engine = RankingEngine(scoring_engine)
+        logger.info("✓ Scoring and ranking engines initialized")
+        
+        # Initialize re-ranking engine
+        reranking_engine = ReRankingEngine()
+        logger.info("✓ Re-ranking engine initialized")
+        
+        # Initialize metadata tracker
+        metadata_tracker = FileMetadataTracker()
+        logger.info("✓ Metadata tracker initialized")
         
         # Initialize embedding manager
         embedding_manager = EmbeddingManager()
@@ -64,6 +99,10 @@ async def lifespan(app: FastAPI):
         # Initialize retriever manager
         retriever_manager = RetrieverManager(embedding_manager)
         logger.info("✓ Retriever manager initialized")
+        
+        # Initialize hybrid retriever
+        hybrid_retriever = HybridRetriever(vector_weight=0.6, keyword_weight=0.4)
+        logger.info("✓ Hybrid retriever initialized")
         
         # Initialize LLM manager
         llm_manager = LLMManager()
@@ -78,7 +117,8 @@ async def lifespan(app: FastAPI):
         file_watcher = FileWatcher(
             watch_path=os.getenv('DATA_PATH', './data/materials'),
             embedding_manager=embedding_manager,
-            retriever_manager=retriever_manager
+            retriever_manager=retriever_manager,
+            metadata_tracker=metadata_tracker
         )
         file_watcher.start()
         logger.info("✓ File watcher started - monitoring structure for changes")
@@ -183,6 +223,7 @@ async def health_check():
 async def chat(request: ChatRequest):
     """
     Main chat endpoint for material pricing queries.
+    Uses full pipeline: retrieval -> scoring -> ranking -> answer generation.
     
     Args:
         request: ChatRequest containing query and web search flag
@@ -201,50 +242,85 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
     
     # Verify managers are initialized
-    if not all([embedding_manager, retriever_manager, llm_manager]):
+    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine]):
         raise HTTPException(status_code=503, detail="Service not fully initialized")
     
     try:
         logger.info(f"Processing query: {request.query[:100]}...")
         
-        # Step 1: Retrieve relevant documents from vector DB
-        retrieved_docs = retriever_manager.retrieve(
-            query=request.query,
-            top_k=5
-        )
+        # Step 1: Retrieve relevant chunks from vector DB
+        retrieved = retriever_manager.retrieve(query=request.query, top_k=10)
         
-        if not retrieved_docs:
+        if not retrieved:
             return ChatResponse(
                 response="I don't have any information about this topic in the materials database. Please try a different query or enable web search for current market information.",
                 sources=[],
                 web_search_used=False
             )
         
-        # Step 2: Format retrieved context
-        context = "\n\n".join([
-            f"Source: {doc['file_path']}\n{doc['content']}"
-            for doc in retrieved_docs
-        ])
+        # Format retrieved results into chunks with metadata
+        chunks = []
+        vector_scores = []
+        for r in retrieved:
+            chunks.append({
+                "text": r.get("content", ""),
+                "metadata": {
+                    "file_path": r.get("file_path", "unknown"),
+                    "chunk_index": r.get("chunk_index", 0),
+                    "semantic_type": "general"
+                }
+            })
+            vector_scores.append(r.get("score", 0))
         
-        # Step 3: Generate response using LLM
-        llm_response = llm_manager.generate_response(
+        # Step 2: Rank results with scoring
+        ranked = ranking_engine.rank_results(
+            chunks=chunks,
+            vector_scores=vector_scores,
+            top_k=10,
+            min_confidence="low"
+        )
+        
+        if not ranked:
+            return ChatResponse(
+                response="No relevant information found. Please try a different query.",
+                sources=[],
+                web_search_used=False
+            )
+        
+        # Step 3: RE-RANK with query-aware re-ranking (reduce hallucination)
+        reranked = reranking_engine.rerank_with_relevance_scoring(
             query=request.query,
-            context=context,
+            chunks=ranked,
+            top_k=5
+        )
+        
+        logger.info(f"Re-ranked results: {len(reranked)} chunks for LLM")
+        
+        # Check if confidence should be reduced based on re-ranking
+        if reranked and reranking_engine.should_confidence_be_reduced(request.query, reranked[0]):
+            logger.warning("Re-ranking detected weak match, reducing confidence")
+            for chunk in reranked:
+                chunk["scores"]["confidence"] = "low"
+        
+        # Step 4: Generate answer using LLM
+        answer_result = llm_manager.generate_answer(
+            query=request.query,
+            retrieved_chunks=reranked,
             use_web_search=request.use_web_search
         )
         
-        # Step 4: Format source citations
+        # Step 5: Format source citations
         sources = [
             SourceCitation(
-                file_path=doc['file_path'],
-                content_snippet=doc['content'][:200] + "...",
-                relevance_score=doc['score']
+                file_path=chunk["source"]["file_path"],
+                content_snippet=chunk["text"][:200] + "...",
+                relevance_score=chunk["relevance"]["score"]
             )
-            for doc in retrieved_docs
+            for chunk in ranking_engine.format_batch(reranked)
         ]
         
         return ChatResponse(
-            response=llm_response,
+            response=answer_result["answer"],
             sources=sources,
             web_search_used=request.use_web_search
         )
@@ -343,39 +419,39 @@ async def download_file(path: str):
     Download a file from the materials directory.
     
     Args:
-        path: Relative path to the file within materials
+        path: Relative path to the file within materials (e.g., projectAcme/stone/stone_data.xlsx)
         
     Returns:
         FileResponse: The file to download
     """
     try:
-        data_path = os.getenv('DATA_PATH', './data/materials')
+        data_path = Path(os.getenv('DATA_PATH', './data/materials'))
         
         # Construct the full file path
-        if path.startswith('materials/'):
-            base_path = data_path
-        else:
-            base_path = os.path.join(data_path, 'materials')
-        
-        full_path = os.path.join(base_path, path)
+        # path is like "projectAcme/stone/stone_data.xlsx"
+        full_path = data_path / path
         
         # Resolve the path to prevent directory traversal attacks
-        full_path = os.path.abspath(full_path)
-        base_abs = os.path.abspath(base_path)
+        full_path = full_path.resolve()
+        base_abs = data_path.resolve()
         
         # Verify the file is within the data directory
-        if not full_path.startswith(base_abs):
+        if not str(full_path).startswith(str(base_abs)):
+            logger.warning(f"Access denied: {full_path} is outside {base_abs}")
             raise HTTPException(status_code=403, detail="Access denied")
         
         # Check if file exists
-        if not os.path.exists(full_path) or not os.path.isfile(full_path):
-            raise HTTPException(status_code=404, detail="File not found")
+        if not full_path.exists() or not full_path.is_file():
+            logger.warning(f"File not found: {full_path}")
+            raise HTTPException(status_code=404, detail=f"File not found: {path}")
         
         # Get the file name for the download
-        file_name = os.path.basename(full_path)
+        file_name = full_path.name
+        
+        logger.info(f"Downloading file: {full_path}")
         
         return FileResponse(
-            path=full_path,
+            path=str(full_path),
             filename=file_name,
             media_type='application/octet-stream'
         )
@@ -383,8 +459,8 @@ async def download_file(path: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error downloading file: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error downloading file")
+        logger.error(f"Error downloading file {path}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
 
 
 def build_file_tree(directory: str, relative_path: str = ""):

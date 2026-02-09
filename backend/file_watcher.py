@@ -3,6 +3,7 @@ Monitors data/materials/ folder continuously
 Automatically detects changes to .xlsx and .pdf files
 Updates embeddings and chunks when files change
 Allows hot-updating materials without restart
+Integrates with metadata tracking for incremental indexing
 """
 
 import logging
@@ -20,19 +21,22 @@ class MaterialFileEventHandler(FileSystemEventHandler):
     Handles file system events for material files.
     Triggers re-embedding when files are created, modified, or deleted.
     Supports .xlsx and .pdf file formats.
+    Integrates with metadata tracking for change detection.
     """
     
-    def __init__(self, embedding_manager, retriever_manager):
+    def __init__(self, embedding_manager, retriever_manager, metadata_tracker=None):
         """
         Initialize event handler with manager instances.
         
         Args:
             embedding_manager: EmbeddingManager instance
             retriever_manager: RetrieverManager instance
+            metadata_tracker: FileMetadataTracker instance (optional)
         """
         super().__init__()
         self.embedding_manager = embedding_manager
         self.retriever_manager = retriever_manager
+        self.metadata_tracker = metadata_tracker
         self.last_event_time = {}
         self.debounce_delay = 2  # Seconds to wait before processing
     
@@ -41,8 +45,8 @@ class MaterialFileEventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         
-        # Support .pdf and .xlsx files
-        supported_formats = {'.pdf', '.xlsx'}
+        # Support .pdf, .xlsx and .csv files
+        supported_formats = {'.pdf', '.xlsx', '.xls', '.csv'}
         if not any(event.src_path.lower().endswith(fmt) for fmt in supported_formats):
             return
         
@@ -54,8 +58,8 @@ class MaterialFileEventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         
-        # Support .pdf and .xlsx files
-        supported_formats = {'.pdf', '.xlsx'}
+        # Support .pdf, .xlsx and .csv files
+        supported_formats = {'.pdf', '.xlsx', '.xls', '.csv'}
         if not any(event.src_path.lower().endswith(fmt) for fmt in supported_formats):
             return
         
@@ -77,6 +81,7 @@ class MaterialFileEventHandler(FileSystemEventHandler):
         """
         Process a file change by re-embedding it.
         Handles file creation, modification, and deletion events.
+        Tracks file metadata for incremental indexing.
         
         Args:
             file_path: Path to the modified file
@@ -96,6 +101,12 @@ class MaterialFileEventHandler(FileSystemEventHandler):
             chunks = self.embedding_manager.embed_file(file_path)
             
             if chunks > 0:
+                # Track file metadata if tracker available
+                if self.metadata_tracker:
+                    from chunking import ChunkManager
+                    file_hash = ChunkManager._compute_hash(file_path)
+                    self.metadata_tracker.track_file(file_path, file_hash, chunks)
+                
                 logger.info(
                     f"✓ File {event_type} processed successfully. "
                     f"Chunks created/updated: {chunks}"
@@ -113,11 +124,12 @@ class MaterialFileEventHandler(FileSystemEventHandler):
 class FileWatcher:
     """
     Watches material files directory for changes and triggers re-embedding.
-    Monitors .txt, .xlsx, and .pdf files in the folder structure.
+    Monitors .txt, .xlsx, .xls, .pdf, and .csv files in the folder structure.
     Runs as a background daemon thread.
+    Integrates with metadata tracking for change detection.
     """
     
-    def __init__(self, watch_path: str, embedding_manager, retriever_manager):
+    def __init__(self, watch_path: str, embedding_manager, retriever_manager, metadata_tracker=None):
         """
         Initialize file watcher.
         
@@ -125,16 +137,19 @@ class FileWatcher:
             watch_path: Path to watch for changes
             embedding_manager: EmbeddingManager instance
             retriever_manager: RetrieverManager instance
+            metadata_tracker: FileMetadataTracker instance (optional)
         """
         self.watch_path = Path(watch_path)
         self.embedding_manager = embedding_manager
         self.retriever_manager = retriever_manager
+        self.metadata_tracker = metadata_tracker
         
         # Create observer
         self.observer = Observer()
         self.event_handler = MaterialFileEventHandler(
             embedding_manager,
-            retriever_manager
+            retriever_manager,
+            metadata_tracker
         )
         
         # Track thread state
@@ -163,7 +178,7 @@ class FileWatcher:
             self._running = True
             
             logger.info(f"✓ File watcher started for: {self.watch_path}")
-            logger.info("  Monitoring for changes to: .xlsx, .pdf files")
+            logger.info("  Monitoring for changes to: .xlsx, .xls, .pdf, .csv files")
             
         except Exception as e:
             logger.error(f"Error starting file watcher: {str(e)}", exc_info=True)

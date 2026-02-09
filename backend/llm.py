@@ -158,6 +158,58 @@ RELEVANT MATERIALS DATABASE INFORMATION:
         
         return prompt
     
+    def generate_answer(
+        self,
+        query: str,
+        retrieved_chunks: list,
+        use_web_search: bool = False
+    ) -> dict:
+        """
+        Generate an answer from retrieved chunks with full source attribution.
+        
+        Args:
+            query: User's question
+            retrieved_chunks: List of scored chunks with metadata
+            use_web_search: Whether to include web search
+            
+        Returns:
+            Dict with answer, confidence, and sources
+        """
+        try:
+            # Format context from chunks
+            context_lines = []
+            sources = set()
+            
+            for chunk in retrieved_chunks:
+                text = chunk.get("text", "")
+                metadata = chunk.get("metadata", {})
+                source_file = metadata.get("file_path", "unknown")
+                sources.add(source_file)
+                
+                # Include chunk text with source
+                context_lines.append(f"{text}\n[Source: {source_file}]")
+            
+            context = "\n\n".join(context_lines)
+            
+            # Generate response
+            response = self.generate_response(query, context, use_web_search)
+            
+            # Extract confidence from chunks if available
+            confidences = [c.get("scores", {}).get("confidence", "low") 
+                          for c in retrieved_chunks]
+            confidence_level = confidences[0] if confidences else "low"
+            
+            return {
+                "answer": response,
+                "confidence": confidence_level,
+                "sources": list(sources),
+                "chunks_used": len(retrieved_chunks)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating answer: {e}")
+            raise
+    
     def generate_response(
         self,
         query: str,

@@ -1,0 +1,578 @@
+{
+  "data\\materials\\projectFacebook\\wood\\wood_data.xlsx": {
+    "file_path": "data\\materials\\projectFacebook\\wood\\wood_data.xlsx",
+    "file_hash": "fea34a56b2fba80edbca17168a595c6388a0e3bf1e655cccb58307069487f422",
+    "file_size": 4978,
+    "last_modified": "2026-02-05T23:55:25.860465",
+    "indexed_at": "2026-02-09T20:34:53.915621",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\wood\\wood_spec.pdf": {
+    "file_path": "data\\materials\\projectFacebook\\wood\\wood_spec.pdf",
+    "file_hash": "5e2cf1296738352467d88c8f7b2b478658d5a6fbaed2c7f6bd3d0d8d815a8c40",
+    "file_size": 2093,
+    "last_modified": "2026-02-05T23:56:48.660707",
+    "indexed_at": "2026-02-09T20:34:54.457738",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\wood\\wood_data.xlsx": {
+    "file_path": "data\\materials\\projectAcme\\wood\\wood_data.xlsx",
+    "file_hash": "bc03238312549c3cceac9cce537c54e0dcd19b928f499f3720c7bfdb35a9a854",
+    "file_size": 4997,
+    "last_modified": "2026-02-05T23:55:25.774621",
+    "indexed_at": "2026-02-09T20:34:55.004218",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\wood\\wood_spec.pdf": {
+    "file_path": "data\\materials\\projectAcme\\wood\\wood_spec.pdf",
+    "file_hash": "ff96df364dbc9865e4a5d9465fc1e14d9943109c82937db9c103f421c97c6c66",
+    "file_size": 2118,
+    "last_modified": "2026-02-05T23:56:48.647630",
+    "indexed_at": "2026-02-09T20:34:55.550273",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\concrete\\concrete_spec.pdf": {
+    "file_path": "data\\materials\\projectAcme\\concrete\\concrete_spec.pdf",
+    "file_hash": "a1ca20ada81812bdb58cc0dcca32f6668d4a1793dbb6e0b957fff1b3b617e6a2",
+    "file_size": 2093,
+    "last_modified": "2026-02-05T23:56:48.637542",
+    "indexed_at": "2026-02-09T20:34:56.099480",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\concrete\\concrete_data.xlsx": {
+    "file_path": "data\\materials\\projectAcme\\concrete\\concrete_data.xlsx",
+    "file_hash": "d8cb5e75797829efb30bcd8a01edc5636c38c7a5f44193465910a9d8583d0213",
+    "file_size": 4996,
+    "last_modified": "2026-02-05T23:55:25.729446",
+    "indexed_at": "2026-02-09T20:34:56.650432",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\metal\\metal_data.xlsx": {
+    "file_path": "data\\materials\\projectFacebook\\metal\\metal_data.xlsx",
+    "file_hash": "884ea329ea4852a65b782d407185ae3ee23f1f5e6b13ac54579b59074a382258",
+    "file_size": 4996,
+    "last_modified": "2026-02-05T23:55:25.816782",
+    "indexed_at": "2026-02-09T20:34:57.198247",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\concrete\\concrete_data.xlsx": {
+    "file_path": "data\\materials\\projectFacebook\\concrete\\concrete_data.xlsx",
+    "file_hash": "3efb9e11f3a2e5a1594a6f3042050dd1bb2357c07fb1b526ff9b1aaa4a94b4d3",
+    "file_size": 4994,
+    "last_modified": "2026-02-05T23:55:25.794741",
+    "indexed_at": "2026-02-09T20:34:57.748761",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\stone\\stone_spec.pdf": {
+    "file_path": "data\\materials\\projectAcme\\stone\\stone_spec.pdf",
+    "file_hash": "c600fd89f87b2a9dbae362c2c77b8d147ff8cf3d18d1aeb15c9400da327f6f9b",
+    "file_size": 2084,
+    "last_modified": "2026-02-05T23:56:48.644630",
+    "indexed_at": "2026-02-09T20:34:58.296332",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\stone\\stone_spec.pdf": {
+    "file_path": "data\\materials\\projectFacebook\\stone\\stone_spec.pdf",
+    "file_hash": "c1f4186a3d2966312bb7a4fff2125d9f353c27165e79f443f51a168019ef305b",
+    "file_size": 2071,
+    "last_modified": "2026-02-05T23:56:48.657708",
+    "indexed_at": "2026-02-09T20:34:58.838761",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\metal\\metal_spec.pdf": {
+    "file_path": "data\\materials\\projectFacebook\\metal\\metal_spec.pdf",
+    "file_hash": "be9b7acc08f2031574c5e1da8519b0ccfb724ee0d57c4875cc4ed596647849cd",
+    "file_size": 2101,
+    "last_modified": "2026-02-05T23:56:48.654706",
+    "indexed_at": "2026-02-09T20:34:59.395406",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\stone\\stone_data.xlsx": {
+    "file_path": "data\\materials\\projectAcme\\stone\\stone_data.xlsx",
+    "file_hash": "6e97c4c12648a840afdaeb2c2630c6a9828d474141067c5f08c2cf83bf6b9e74",
+    "file_size": 5003,
+    "last_modified": "2026-02-05T23:55:25.759594",
+    "indexed_at": "2026-02-09T20:34:59.976652",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\concrete\\concrete_spec.pdf": {
+    "file_path": "data\\materials\\projectFacebook\\concrete\\concrete_spec.pdf",
+    "file_hash": "3d539985e31d474cced82f2393a3d0a2d5de0006d5e1d313fbec19687d10a0a2",
+    "file_size": 2097,
+    "last_modified": "2026-02-05T23:56:48.650632",
+    "indexed_at": "2026-02-09T20:35:00.532107",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\metal\\metal_spec.pdf": {
+    "file_path": "data\\materials\\projectAcme\\metal\\metal_spec.pdf",
+    "file_hash": "4f48acd4ba00fb83d8f759b12a770c193108e7b74a975eefa1bcbb9b1e3f0326",
+    "file_size": 2097,
+    "last_modified": "2026-02-05T23:56:48.641540",
+    "indexed_at": "2026-02-09T20:35:01.078554",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\metal\\metal_data.xlsx": {
+    "file_path": "data\\materials\\projectAcme\\metal\\metal_data.xlsx",
+    "file_hash": "058d716a596e760c7d04685faa63ae5e78ce048a77e7e231525337f7d11cdd19",
+    "file_size": 4998,
+    "last_modified": "2026-02-05T23:55:25.744573",
+    "indexed_at": "2026-02-09T20:35:01.630322",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\stone\\stone_data.xlsx": {
+    "file_path": "data\\materials\\projectFacebook\\stone\\stone_data.xlsx",
+    "file_hash": "9c058222be325ecf1299e4976d5ee8972647c8a85e7cfd3d31950b80a2963b22",
+    "file_size": 4987,
+    "last_modified": "2026-02-05T23:55:25.838336",
+    "indexed_at": "2026-02-09T20:35:02.190863",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\projectFacebook\\wood\\wood_prices.csv",
+    "file_hash": "955a44acd7048365dfe882ad5243ffe6ae643a84cca2c19aeb4ff203fd0407c5",
+    "file_size": 606,
+    "last_modified": "2026-02-05T23:57:19.104508",
+    "indexed_at": "2026-02-09T20:37:06.848886",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\projectFacebook\\stone\\stone_prices.csv",
+    "file_hash": "f4f149dbd649108cfabf7e69bb12bca6a771e3b002f8db80eee3ef37513917a8",
+    "file_size": 598,
+    "last_modified": "2026-02-05T23:57:19.104508",
+    "indexed_at": "2026-02-09T20:37:07.392711",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\projectFacebook\\metal\\metal_prices.csv",
+    "file_hash": "5cb65781d5ca455cfb89521e63644260dc0052f0a1fd0a3b1692db8f0abc37a9",
+    "file_size": 598,
+    "last_modified": "2026-02-05T23:57:19.093702",
+    "indexed_at": "2026-02-09T20:37:07.936691",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectFacebook\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\projectFacebook\\concrete\\concrete_prices.csv",
+    "file_hash": "b6c2446d81aad700e3d25ba95b4ff920483e49daea049195c3ab301c34b753ba",
+    "file_size": 531,
+    "last_modified": "2026-02-05T23:57:19.093702",
+    "indexed_at": "2026-02-09T20:37:08.486824",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\projectAcme\\wood\\wood_prices.csv",
+    "file_hash": "463a93b04542a6ab69f2f4ae2c84403d885b70af41f383dd49429383eb665807",
+    "file_size": 579,
+    "last_modified": "2026-02-05T23:57:19.093702",
+    "indexed_at": "2026-02-09T20:37:09.056251",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\projectAcme\\stone\\stone_prices.csv",
+    "file_hash": "46d40177b1201725525fff4c1af4724c3507867e85c06f2506da351542a6da2f",
+    "file_size": 585,
+    "last_modified": "2026-02-05T23:57:19.093702",
+    "indexed_at": "2026-02-09T20:37:09.607762",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\projectAcme\\metal\\metal_prices.csv",
+    "file_hash": "8029fb3cc2f07027aa4187c5c5c4e0d3e65152045ff1d5474e7fda522d999332",
+    "file_size": 589,
+    "last_modified": "2026-02-05T23:57:19.093702",
+    "indexed_at": "2026-02-09T20:37:10.157319",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\projectAcme\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\projectAcme\\concrete\\concrete_prices.csv",
+    "file_hash": "dcbe799405da605beac465c6fc8372add0969d06f334f4c58370783d0336f452",
+    "file_size": 547,
+    "last_modified": "2026-02-05T23:57:19.093702",
+    "indexed_at": "2026-02-09T20:37:10.704652",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\VentureBuildSolutions\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\VentureBuildSolutions\\wood\\wood_prices.csv",
+    "file_hash": "571ab6b77c0c881028a9eeaff55fbee7abd6ce525bebbf235cb4b1c4a0fdbd9f",
+    "file_size": 669,
+    "last_modified": "2026-02-09T18:46:20.928472",
+    "indexed_at": "2026-02-09T20:55:56.961754",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\VentureBuildSolutions\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\VentureBuildSolutions\\stone\\stone_prices.csv",
+    "file_hash": "b344e5137686ee988f9fc91e6d479939ed3d1e5862a55477c2b2a2446ee3e577",
+    "file_size": 595,
+    "last_modified": "2026-02-09T18:46:20.927471",
+    "indexed_at": "2026-02-09T20:55:57.616012",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\VentureBuildSolutions\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\VentureBuildSolutions\\metal\\metal_prices.csv",
+    "file_hash": "5c8d2e7a6dce0d7b093ab0c08ced863b0e4f554abadfe111dccade52770cdb30",
+    "file_size": 696,
+    "last_modified": "2026-02-09T18:46:20.925470",
+    "indexed_at": "2026-02-09T20:55:58.244604",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\VentureBuildSolutions\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\VentureBuildSolutions\\concrete\\concrete_prices.csv",
+    "file_hash": "06d2332c02e78d327eba917317fda2b533cc2c8932b1d236e7574e7b5048917f",
+    "file_size": 630,
+    "last_modified": "2026-02-09T18:46:20.925470",
+    "indexed_at": "2026-02-09T20:55:58.811278",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TitanMaterialsGroup\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\TitanMaterialsGroup\\wood\\wood_prices.csv",
+    "file_hash": "c6066e3e276d02fb13e5dcaa04adba71e8d84d174d16849fc6d1b3c85f1a3bfa",
+    "file_size": 635,
+    "last_modified": "2026-02-09T18:46:20.924473",
+    "indexed_at": "2026-02-09T20:55:59.554840",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TitanMaterialsGroup\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\TitanMaterialsGroup\\stone\\stone_prices.csv",
+    "file_hash": "187470f44190bdb353a617da91b81b09cb82fa99d3378d4d97a2f3e9e652b771",
+    "file_size": 592,
+    "last_modified": "2026-02-09T18:46:20.923471",
+    "indexed_at": "2026-02-09T20:56:00.181000",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TitanMaterialsGroup\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\TitanMaterialsGroup\\metal\\metal_prices.csv",
+    "file_hash": "30e730abdaddf329b5cabd8525c33d359b11e4ce4f682564dcf1f8de8b0d8ac4",
+    "file_size": 645,
+    "last_modified": "2026-02-09T18:46:20.922465",
+    "indexed_at": "2026-02-09T20:56:00.764165",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TitanMaterialsGroup\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\TitanMaterialsGroup\\concrete\\concrete_prices.csv",
+    "file_hash": "6e2337049dcdde175620029822aac5d5eff34c1c4e7d256b072e6894038f70e3",
+    "file_size": 610,
+    "last_modified": "2026-02-09T18:46:20.921459",
+    "indexed_at": "2026-02-09T20:56:01.325610",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TechVisionCorp\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\TechVisionCorp\\wood\\wood_prices.csv",
+    "file_hash": "2589016d9f76db31dd74b0e65a67c1ee68da20838e0d6fb3ed5ece406b8de4ad",
+    "file_size": 647,
+    "last_modified": "2026-02-09T18:46:20.919953",
+    "indexed_at": "2026-02-09T20:56:01.884378",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TechVisionCorp\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\TechVisionCorp\\stone\\stone_prices.csv",
+    "file_hash": "b32c132ecdc084e2ab652b2c2b401ab8db371f75374e6c5f4f386124ba03b64b",
+    "file_size": 584,
+    "last_modified": "2026-02-09T18:46:20.918956",
+    "indexed_at": "2026-02-09T20:56:02.435100",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TechVisionCorp\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\TechVisionCorp\\metal\\metal_prices.csv",
+    "file_hash": "c744d77dee475572522578c83f33a0281b1ea225564324468a480606953a3835",
+    "file_size": 679,
+    "last_modified": "2026-02-09T18:46:20.917954",
+    "indexed_at": "2026-02-09T20:56:02.990346",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\TechVisionCorp\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\TechVisionCorp\\concrete\\concrete_prices.csv",
+    "file_hash": "0289a769ed7769edb769af263bb67f35768f3d8284ef61b0386828d910d2a3ea",
+    "file_size": 629,
+    "last_modified": "2026-02-09T18:46:20.916954",
+    "indexed_at": "2026-02-09T20:56:03.551025",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\SkyRiseEnterprises\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\SkyRiseEnterprises\\wood\\wood_prices.csv",
+    "file_hash": "b1fac95c22118702369dde6c1d28c47885876aa3383597f1b8f73773f09723e8",
+    "file_size": 642,
+    "last_modified": "2026-02-09T18:46:20.915954",
+    "indexed_at": "2026-02-09T20:56:04.099748",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\SkyRiseEnterprises\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\SkyRiseEnterprises\\stone\\stone_prices.csv",
+    "file_hash": "84c88e109c3728b87ef7c357e868d0c86ca4ed14a5909a346cfeeb7f51341d61",
+    "file_size": 574,
+    "last_modified": "2026-02-09T18:46:20.914954",
+    "indexed_at": "2026-02-09T20:56:04.646751",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\SkyRiseEnterprises\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\SkyRiseEnterprises\\metal\\metal_prices.csv",
+    "file_hash": "9ea3873d2a0987dd16b5d3d73689dc9bfca6e3114ba1f9bf026d4766a9b33ed7",
+    "file_size": 668,
+    "last_modified": "2026-02-09T18:46:20.914954",
+    "indexed_at": "2026-02-09T20:56:05.206613",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\SkyRiseEnterprises\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\SkyRiseEnterprises\\concrete\\concrete_prices.csv",
+    "file_hash": "8c665c097720ad98bab6fd9df12d70323f7390f5edc38d67739db376c59a46e5",
+    "file_size": 622,
+    "last_modified": "2026-02-09T18:46:20.913954",
+    "indexed_at": "2026-02-09T20:56:05.756578",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\QuantumBuildSystems\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\QuantumBuildSystems\\wood\\wood_prices.csv",
+    "file_hash": "7348094f03fb0a10b5149a61f396e226b7e45f3900a55af19832b854bde8d907",
+    "file_size": 662,
+    "last_modified": "2026-02-09T18:46:20.912954",
+    "indexed_at": "2026-02-09T20:56:06.324179",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\QuantumBuildSystems\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\QuantumBuildSystems\\stone\\stone_prices.csv",
+    "file_hash": "54e07f87f7861e01662a58ffcb2386939a3d17f921837b26818d935fefd08d97",
+    "file_size": 599,
+    "last_modified": "2026-02-09T18:46:20.911948",
+    "indexed_at": "2026-02-09T20:56:06.894617",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\QuantumBuildSystems\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\QuantumBuildSystems\\metal\\metal_prices.csv",
+    "file_hash": "27685fa79e33a985843910f315bc3500b7fd2dd2ac40175cf4a07d421f297d1b",
+    "file_size": 696,
+    "last_modified": "2026-02-09T18:46:20.910888",
+    "indexed_at": "2026-02-09T20:56:07.512656",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\QuantumBuildSystems\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\QuantumBuildSystems\\concrete\\concrete_prices.csv",
+    "file_hash": "b374cff95eb40a17307d859ff00537d3466ddca85049116f58b3bde556e61a0e",
+    "file_size": 648,
+    "last_modified": "2026-02-09T18:46:20.909890",
+    "indexed_at": "2026-02-09T20:56:08.075137",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\PinnacleConstruction\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\PinnacleConstruction\\wood\\wood_prices.csv",
+    "file_hash": "56f26fbbcb7a712d99d388a522fa0a445d47d4fb07781ba4deba1a4c861c10f0",
+    "file_size": 631,
+    "last_modified": "2026-02-09T18:46:20.908889",
+    "indexed_at": "2026-02-09T20:56:08.630172",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\PinnacleConstruction\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\PinnacleConstruction\\stone\\stone_prices.csv",
+    "file_hash": "c5a367df1e62ed6ea03a9e98b51ad4b74c10a4b61d4ca9dc726ea8fc8ee1113d",
+    "file_size": 570,
+    "last_modified": "2026-02-09T18:46:20.907891",
+    "indexed_at": "2026-02-09T20:56:09.178491",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\PinnacleConstruction\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\PinnacleConstruction\\metal\\metal_prices.csv",
+    "file_hash": "60376a7d8fdcaf4f95aa8b422826d27cacfc2af9da3098e4470719a4d0b338db",
+    "file_size": 658,
+    "last_modified": "2026-02-09T18:46:20.907891",
+    "indexed_at": "2026-02-09T20:56:09.728392",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\PinnacleConstruction\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\PinnacleConstruction\\concrete\\concrete_prices.csv",
+    "file_hash": "784056c940de0e257608371670a8f9474d2e23b6c6468eeced20f533c7e2a08b",
+    "file_size": 602,
+    "last_modified": "2026-02-09T18:46:20.906889",
+    "indexed_at": "2026-02-09T20:56:10.287935",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\OmniConstructInc\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\OmniConstructInc\\wood\\wood_prices.csv",
+    "file_hash": "cc0bf99325867aa77d18f8d379dd1acae514e4c3c42e6a3a3001e3010c125a27",
+    "file_size": 665,
+    "last_modified": "2026-02-09T18:46:20.906889",
+    "indexed_at": "2026-02-09T20:56:10.845891",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\OmniConstructInc\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\OmniConstructInc\\stone\\stone_prices.csv",
+    "file_hash": "761a35a0555df10f65f92d3729590be72706ab8cc367fb74a526627122f55ccd",
+    "file_size": 603,
+    "last_modified": "2026-02-09T18:46:20.905888",
+    "indexed_at": "2026-02-09T20:56:11.397478",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\OmniConstructInc\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\OmniConstructInc\\metal\\metal_prices.csv",
+    "file_hash": "f45c0e487cb5781c02d51716f7290ed2822736909f8e94c4196942dc28e15a9b",
+    "file_size": 685,
+    "last_modified": "2026-02-09T18:46:20.904890",
+    "indexed_at": "2026-02-09T20:56:11.955465",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\OmniConstructInc\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\OmniConstructInc\\concrete\\concrete_prices.csv",
+    "file_hash": "76fe3632b532553fe4c04807a7f37d1bfda55624917be42b7bed23d48001ff40",
+    "file_size": 626,
+    "last_modified": "2026-02-09T18:46:20.903888",
+    "indexed_at": "2026-02-09T20:56:12.510540",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\NexGenStructures\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\NexGenStructures\\wood\\wood_prices.csv",
+    "file_hash": "885138fb73ad9d719d7b4245ee049e8b42aeb15b7e544a0870a03e291b77ec4b",
+    "file_size": 647,
+    "last_modified": "2026-02-09T18:46:20.902888",
+    "indexed_at": "2026-02-09T20:56:13.193855",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\NexGenStructures\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\NexGenStructures\\stone\\stone_prices.csv",
+    "file_hash": "9acb9e8d05da00550febf7354e1e47404e25915aeef0608ea278f70d7ba0a811",
+    "file_size": 586,
+    "last_modified": "2026-02-09T18:46:20.902888",
+    "indexed_at": "2026-02-09T20:56:13.768679",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\NexGenStructures\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\NexGenStructures\\metal\\metal_prices.csv",
+    "file_hash": "77f956237aebd5e37dd27339059372b9944ca763aa26c1c16e94e81c85b63532",
+    "file_size": 663,
+    "last_modified": "2026-02-09T18:46:20.901891",
+    "indexed_at": "2026-02-09T20:56:14.338977",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\NexGenStructures\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\NexGenStructures\\concrete\\concrete_prices.csv",
+    "file_hash": "c5bbdde932e608f2d744a2acd9ce48272d6d6f1c55b84c3c6dcb49e9e8694d67",
+    "file_size": 640,
+    "last_modified": "2026-02-09T18:46:20.901891",
+    "indexed_at": "2026-02-09T20:56:14.905801",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\EcoBuildersIntl\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\EcoBuildersIntl\\wood\\wood_prices.csv",
+    "file_hash": "31cd4599800660393fa3bc99c0a6af02407c62b01f485ff37ac2dd6fb77a6932",
+    "file_size": 659,
+    "last_modified": "2026-02-09T18:46:20.900883",
+    "indexed_at": "2026-02-09T20:56:15.463591",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\ApexIndustries\\wood\\wood_prices.csv": {
+    "file_path": "data\\materials\\ApexIndustries\\wood\\wood_prices.csv",
+    "file_hash": "89d8d26d878c19d2fa6ec1158dbb3478cd01cafcae6a7d43a0856fbfa8d5cbea",
+    "file_size": 664,
+    "last_modified": "2026-02-09T18:46:20.897378",
+    "indexed_at": "2026-02-09T20:56:16.015007",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\ApexIndustries\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\ApexIndustries\\stone\\stone_prices.csv",
+    "file_hash": "7d3fa94300e551a94b8e1e889205ab7832801f4b95b12e82e9e554f694e08d37",
+    "file_size": 585,
+    "last_modified": "2026-02-09T18:46:20.897378",
+    "indexed_at": "2026-02-09T20:56:16.557721",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\ApexIndustries\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\ApexIndustries\\concrete\\concrete_prices.csv",
+    "file_hash": "21626f3179e141f804b8b67ec48329584389e02836c35ce4da3915c1267fc3d2",
+    "file_size": 639,
+    "last_modified": "2026-02-09T18:46:20.895379",
+    "indexed_at": "2026-02-09T20:56:17.105496",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\ApexIndustries\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\ApexIndustries\\metal\\metal_prices.csv",
+    "file_hash": "5993ef912aa04dca13543c7ca555cdc17c2104da3f3e0a574b6e83d542925401",
+    "file_size": 693,
+    "last_modified": "2026-02-09T18:46:20.896379",
+    "indexed_at": "2026-02-09T20:56:17.653581",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\EcoBuildersIntl\\stone\\stone_prices.csv": {
+    "file_path": "data\\materials\\EcoBuildersIntl\\stone\\stone_prices.csv",
+    "file_hash": "78d732fa4c9da9bfb4535bfee63a4237a12df8a24a77f0db0db4d82227ba652e",
+    "file_size": 598,
+    "last_modified": "2026-02-09T18:46:20.899377",
+    "indexed_at": "2026-02-09T20:56:18.202540",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\EcoBuildersIntl\\metal\\metal_prices.csv": {
+    "file_path": "data\\materials\\EcoBuildersIntl\\metal\\metal_prices.csv",
+    "file_hash": "8af87d70418bc7fc4caf760c44f6fc0a7d66ec0a41e3e1447fca412fc164b960",
+    "file_size": 691,
+    "last_modified": "2026-02-09T18:46:20.899377",
+    "indexed_at": "2026-02-09T20:56:18.770318",
+    "content_blocks": 1,
+    "status": "indexed"
+  },
+  "data\\materials\\EcoBuildersIntl\\concrete\\concrete_prices.csv": {
+    "file_path": "data\\materials\\EcoBuildersIntl\\concrete\\concrete_prices.csv",
+    "file_hash": "7fe343aae82e696cede0d987e4dc0c3297002bd0162c303a00f0e574a2ed618d",
+    "file_size": 621,
+    "last_modified": "2026-02-09T18:46:20.898378",
+    "indexed_at": "2026-02-09T20:56:19.318787",
+    "content_blocks": 1,
+    "status": "indexed"
+  }
+}

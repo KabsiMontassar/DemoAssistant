@@ -2,113 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #dbeafe; /* Soft blue base */
-  background-image: 
-    radial-gradient(#94a3b8 0.75px, transparent 0.75px);
+  color: rgb(var(--foreground-rgb));
+  background-color: #f8fafc; /* Subtle slate-50 background */
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
   background-size: 32px 32px;
   background-attachment: fixed;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding: 2rem;
-}
-
-.main-app-container {
-  width: 100%;
-  
-  height: 90vh;
-  background: white;
-  border-radius: 1rem;
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-}
-
-/* The colorful gradient border effect from the image */
-.main-app-container::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #f43f5e);
-  z-index: -1;
-  border-radius: 2.7rem;
-  opacity: 0.6;
-}
-
-/* Inner white layer to keep the border thin */
-.main-app-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: white;
-  z-index: 0;
-  border-radius: 2.5rem;
-}
-
-@keyframes border-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.moving-border-container {
-  position: relative;
-  padding: 3px;
-  border-radius: 9999px;
-  overflow: hidden;
-  background: #f1f5f9;
-}
-
-.moving-border-gradient {
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: conic-gradient(
-    transparent,
-    rgba(99, 102, 241, 0.2),
-    rgba(99, 102, 241, 0.6),
-    transparent
-  );
-  animation: border-rotate 6s linear infinite;
-}
-
-.moving-border-gradient.fast {
-  animation-duration: 2s;
-}
-
-.moving-border-content {
-  position: relative;
-  z-index: 10;
-  border-radius: 9998px;
-  background: white;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
 }

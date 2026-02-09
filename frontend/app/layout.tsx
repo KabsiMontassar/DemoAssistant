@@ -14,10 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        <div className="main-app-container">
+      <body className="antialiased h-screen w-full overflow-hidden">
+        <div className="flex  h-full">
           <Sidebar />
-          <main className="flex-1 relative overflow-hidden bg-white/50 backdrop-blur-sm z-10 transition-all duration-300">
+          <main className="flex-1 relative h-full overflow-hidden">
             {children}
           </main>
         </div>

@@ -134,7 +134,7 @@ export default function Sidebar() {
 
   return (
     <div className="w-64 bg-white backdrop-blur-md border-r border-blue-100 overflow-y-auto flex flex-col">
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Data Structure</h2>
         <button
           onClick={handleRefresh}

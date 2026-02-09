@@ -253,7 +253,7 @@ async def chat(request: ChatRequest):
         
         if not retrieved:
             return ChatResponse(
-                response="I don't have any information about this topic in the materials database. Please try a different query or enable web search for current market information.",
+                response="I couldn't find any specific information matching your query in the Atlas database. Please try broadening your search or enabling web search for current market data.",
                 sources=[],
                 web_search_used=False
             )
@@ -319,6 +319,11 @@ async def chat(request: ChatRequest):
             for chunk in ranking_engine.format_batch(reranked)
         ]
         
+        # Filter out sources if the AI provides a negative response
+        negative_keywords = ["don't have that information", "couldn't find any specific information", "information not found"]
+        if any(keyword in answer_result["answer"].lower() for keyword in negative_keywords):
+            sources = []
+            
         return ChatResponse(
             response=answer_result["answer"],
             sources=sources,
@@ -533,5 +538,8 @@ if __name__ == "__main__":
         host=host,
         port=port,
         reload=False,
-        log_level="info"
+        log_level="info",
+        workers=1,  # 1 worker for 700MB RAM constraint
+        timeout_keep_alive=5,  # Drop idle connections quickly
+        timeout_graceful_shutdown=10  # Graceful shutdown timeout
     )

@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import ChatInterface from '@/components/ChatInterface'
 import SourceCitation from '@/components/SourceCitation'
 import axios from 'axios'
-import { BarChart3 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -113,31 +112,19 @@ export default function Home() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white relative">
+    <div className="h-full flex flex-col relative z-20">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white shadow-sm flex-shrink-0">
-        <div className="px-4 py-4">
+      <header className=" bg-white/40 backdrop-blur-md flex-shrink-0">
+        <div className="px-8 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Material Pricing AI Assistant
+              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                Atlas
               </h1>
-              <span
-                className={`h-3 w-3 rounded-full ${
-                  systemStatus === 'healthy'
-                    ? 'bg-green-500'
-                    : systemStatus === 'error'
-                    ? 'bg-red-500'
-                    : 'bg-yellow-500'
-                }`}
-                title={`System: ${systemStatus}`}
-              />
-            </div>
-            <div className="flex items-center gap-4">
             </div>
           </div>
           {error && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="mt-3 p-3 bg-red-50/80 border border-red-200/50 rounded-xl">
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
@@ -145,19 +132,13 @@ export default function Home() {
       </header>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 pb-32">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex-1 overflow-y-auto pb-40 px-4">
+        <div className="max-w-4xl mx-auto py-10">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="mb-4">
-                <BarChart3 size={64} className="text-blue-500 mx-auto" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Material Pricing Assistant
-              </h2>
-              <p className="text-gray-600 max-w-md">
-                Ask questions about material pricing and project details. The system
-                will search through material documents and provide sourced answers.
+            <div className="flex flex-col items-center justify-center h-full text-center mt-20">
+              <h2 className="text-xl font-semibold text-blue-900 mb-2">Welcome to Atlas</h2>
+              <p className="text-slate-500 max-w-sm leading-relaxed">
+                Your high-performance material pricing assistant. Ask me anything about project specs or material costs.
               </p>
             </div>
           ) : (
@@ -165,31 +146,27 @@ export default function Home() {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`mb-6 flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`mb-8 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
                 >
                   <div
-                    className={`max-w-2xl rounded-lg p-4 ${
-                      message.role === 'user'
-                        ? 'bg-blue-500 text-white rounded-br-none'
-                        : 'bg-white border border-gray-200 rounded-bl-none shadow-sm'
-                    }`}
+                    className={`max-w-2xl rounded-3xl px-6 py-5 ${message.role === 'user'
+                      ? 'bg-blue-200 text-white rounded-tr-none shadow-lg shadow-blue-200'
+                      : 'bg-slate-50/50 border border-slate-100 rounded-tl-none'
+                      }`}
                   >
                     {message.role === 'user' ? (
-                      <p className="text-sm text-white">{message.content}</p>
+                      <p className="text-sm leading-relaxed">{message.content}</p>
                     ) : (
-                      <div className="text-sm text-gray-900 prose prose-sm max-w-none">
+                      <div className="text-sm text-slate-800 prose prose-sm max-w-none prose-headings:text-slate-900 prose-strong:text-slate-900">
                         <ReactMarkdown
                           components={{
-                            h2: ({node, ...props}) => <h2 className="text-base font-bold mt-3 mb-2 text-gray-900" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-sm font-semibold mt-2 mb-1 text-gray-800" {...props} />,
-                            p: ({node, ...props}) => <p className="text-sm text-gray-700 mb-2" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc list-inside text-sm text-gray-700 mb-2 space-y-1" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal list-inside text-sm text-gray-700 mb-2 space-y-1" {...props} />,
-                            li: ({node, ...props}) => <li className="text-sm text-gray-700" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-semibold text-gray-900" {...props} />,
-                            em: ({node, ...props}) => <em className="italic text-gray-700" {...props} />,
+                            h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-6 mb-3" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="text-base font-semibold mt-4 mb-2" {...props} />,
+                            p: ({ node, ...props }) => <p className="mb-4 leading-relaxed" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-4 space-y-2" {...props} />,
+                            li: ({ node, ...props }) => <li className="text-slate-700" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-bold text-slate-900" {...props} />,
                           }}
                         >
                           {message.content}
@@ -199,11 +176,14 @@ export default function Home() {
 
                     {/* Sources for assistant messages */}
                     {message.role === 'assistant' && message.sources.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-2">
-                          Sources:
-                        </p>
-                        <div className="space-y-2">
+                      <div className="mt-6 pt-6 border-t border-slate-200/60">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="h-1 w-1 rounded-full bg-blue-400" />
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            Verified Sources
+                          </p>
+                        </div>
+                        <div className="space-y-3">
                           {message.sources.map((source, idx) => (
                             <SourceCitation key={idx} source={source} />
                           ))}
@@ -219,9 +199,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Input Area - Floating */}
-      <div className="fixed bottom-10 left-64 right-0">
-        <div className="max-w-4xl mx-auto px-4 py-4 w-full">
+      {/* Input Area - Absolute inside the flex container */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/80 to-transparent pt-10 pb-8 px-8 z-30">
+        <div className="max-w-4xl mx-auto">
           <ChatInterface
             onSendMessage={handleSendMessage}
             disabled={loading || systemStatus === 'error'}

@@ -3,8 +3,8 @@ import './globals.css'
 import Sidebar from '@/components/Sidebar'
 
 export const metadata: Metadata = {
-  title: 'Material Pricing AI Assistant',
-  description: 'RAG-based AI assistant for material pricing information',
+  title: 'Atlas',
+  description: 'Proffessional AI Material Assistant',
 }
 
 export default function RootLayout({
@@ -14,10 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="h-screen bg-white">
-        <div className="flex h-full">
+      <body className="antialiased">
+        <div className="main-app-container">
           <Sidebar />
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 relative overflow-hidden bg-white/50 backdrop-blur-sm z-10 transition-all duration-300">
             {children}
           </main>
         </div>

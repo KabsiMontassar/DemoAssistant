@@ -26,7 +26,7 @@ export default function Sidebar() {
       setRefreshing(false)
     } catch (error) {
       console.error('Failed to fetch file structure:', error)
-      setFileStructure(getDefaultStructure())
+      setFileStructure([])
       setLoading(false)
       setRefreshing(false)
     }
@@ -40,126 +40,6 @@ export default function Sidebar() {
   useEffect(() => {
     fetchFileStructure()
   }, [])
-
-  const getDefaultStructure = (): FileNode[] => [
-    {
-      name: 'materials',
-      type: 'folder',
-      path: 'materials',
-      children: [
-        {
-          name: 'projectAcme',
-          type: 'folder',
-          path: 'materials/projectAcme',
-          children: [
-            {
-              name: 'concrete',
-              type: 'folder',
-              path: 'materials/projectAcme/concrete',
-              children: [
-                {
-                  name: 'concrete_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectAcme/concrete/concrete_prices.csv',
-                },
-              ],
-            },
-            {
-              name: 'metal',
-              type: 'folder',
-              path: 'materials/projectAcme/metal',
-              children: [
-                {
-                  name: 'metal_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectAcme/metal/metal_prices.csv',
-                },
-              ],
-            },
-            {
-              name: 'stone',
-              type: 'folder',
-              path: 'materials/projectAcme/stone',
-              children: [
-                {
-                  name: 'stone_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectAcme/stone/stone_prices.csv',
-                },
-              ],
-            },
-            {
-              name: 'wood',
-              type: 'folder',
-              path: 'materials/projectAcme/wood',
-              children: [
-                {
-                  name: 'wood_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectAcme/wood/wood_prices.csv',
-                },
-              ],
-            },
-          ],
-        },
-        {
-          name: 'projectFacebook',
-          type: 'folder',
-          path: 'materials/projectFacebook',
-          children: [
-            {
-              name: 'concrete',
-              type: 'folder',
-              path: 'materials/projectFacebook/concrete',
-              children: [
-                {
-                  name: 'concrete_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectFacebook/concrete/concrete_prices.csv',
-                },
-              ],
-            },
-            {
-              name: 'metal',
-              type: 'folder',
-              path: 'materials/projectFacebook/metal',
-              children: [
-                {
-                  name: 'metal_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectFacebook/metal/metal_prices.csv',
-                },
-              ],
-            },
-            {
-              name: 'stone',
-              type: 'folder',
-              path: 'materials/projectFacebook/stone',
-              children: [
-                {
-                  name: 'stone_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectFacebook/stone/stone_prices.csv',
-                },
-              ],
-            },
-            {
-              name: 'wood',
-              type: 'folder',
-              path: 'materials/projectFacebook/wood',
-              children: [
-                {
-                  name: 'wood_prices.csv',
-                  type: 'file',
-                  path: 'materials/projectFacebook/wood/wood_prices.csv',
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ]
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -176,11 +56,11 @@ export default function Sidebar() {
   const handleFileClick = async (filePath: string, fileName: string) => {
     try {
       const response = await fetch(`http://localhost:8000/api/download?path=${encodeURIComponent(filePath)}`)
-      
+
       if (!response.ok) {
         throw new Error('Download failed')
       }
-      
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -231,7 +111,7 @@ export default function Sidebar() {
             <>
               <div className="w-4 h-4" />
               <File size={16} className="text-gray-400 flex-shrink-0" />
-              <span 
+              <span
                 className="text-sm text-blue-600 group-hover:text-blue-800 truncate cursor-pointer hover:underline"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -253,7 +133,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 overflow-y-auto flex flex-col">
+    <div className="w-64 bg-white backdrop-blur-md border-r border-blue-100 overflow-y-auto flex flex-col">
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Data Structure</h2>
         <button
@@ -262,8 +142,8 @@ export default function Sidebar() {
           title="Refresh file structure"
           className="p-1.5 hover:bg-gray-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <RotateCw 
-            size={18} 
+          <RotateCw
+            size={18}
             className={`text-gray-600 ${refreshing ? 'animate-spin' : ''}`}
           />
         </button>

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { Globe } from 'lucide-react'
+import { Globe, Send } from 'lucide-react'
 
 interface ChatInterfaceProps {
   onSendMessage: (message: string) => void
@@ -35,51 +35,42 @@ export default function ChatInterface({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative flex gap-2">
-      <div className="flex-1 relative">
+    <div className="moving-border-container shadow-xl shadow-blue-100/50">
+      <div className={`moving-border-gradient ${isLoading ? 'fast' : ''}`} />
+      <div className="moving-border-content px-4 py-3 flex items-center gap-3 bg-white">
         <input
           ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about material pricing, projects, or specifications..."
+          placeholder="Search material pricing, project specs, or history..."
+          className="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 placeholder-slate-400 text-sm py-2"
           disabled={disabled}
-          className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
-          }`}
         />
         <button
           type="button"
           onClick={handleWebSearchToggle}
+          className={`p-2 rounded-xl transition-all duration-200 flex items-center gap-2 ${useWebSearch
+            ? 'bg-blue-50 text-blue-600 font-medium text-xs'
+            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
           disabled={disabled}
-          title={`Web search: ${useWebSearch ? 'enabled' : 'disabled'}`}
-          className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors ${
-            useWebSearch
-              ? 'text-blue-500 hover:text-blue-600'
-              : 'text-gray-400 hover:text-gray-500'
-          } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
         >
-          <Globe size={20} />
+          <Globe className="w-4 h-4" />
+          <span className="hidden sm:inline">Web Search</span>
+        </button>
+        <button
+          type="submit"
+          disabled={disabled || !input.trim()}
+          className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-200"
+        >
+          {isLoading ? (
+            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
         </button>
       </div>
-      <button
-        type="submit"
-        disabled={disabled || !input.trim()}
-        className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-          disabled || !input.trim()
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
-        }`}
-      >
-        {isLoading ? (
-          <span className="flex items-center gap-2">
-            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Sending...
-          </span>
-        ) : (
-          'Send'
-        )}
-      </button>
-    </form>
+    </div>
   )
 }

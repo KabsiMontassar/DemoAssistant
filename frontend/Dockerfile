@@ -8,8 +8,7 @@ COPY package.json package-lock.json ./
 
 # Install dependencies with memory-saving settings
 RUN npm config set progress false && \
-    npm config set max-sockets 2 && \
-    npm ci --no-audit
+    NODE_OPTIONS="--max-old-space-size=512" npm ci --no-audit --no-fund
 
 # Copy source code
 COPY . .

@@ -1,0 +1,7 @@
+Material,Unit,Price,Strength,Application,Supplier,Lead Time
+Standard Concrete Mix,m³,93,25 MPa,General foundations and slabs,OmniConstruct Concrete,3 days
+High-Strength Concrete,m³,152,40 MPa,High-rise and bridge structures,OmniConstruct Premium,6 days
+Lightweight Concrete,m³,109,20 MPa,Interior walls and floors,OmniConstruct Light,4 days
+Reinforced Concrete Formwork,set,3450,35 MPa,Structural elements,OmniConstruct Forms,6 days
+Self-Compacting Concrete,m³,130,30 MPa,Complex architectural elements,OmniConstruct Advanced,5 days
+Stamped Concrete,m³,125,28 MPa,Decorative paving,OmniConstruct Decorative,7 days

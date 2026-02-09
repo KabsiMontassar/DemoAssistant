@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,468,Grade A,Framing and structural support,SkyRise Timber,12%
+Oak Timber,m³,828,Grade B,Flooring and decorative finishes,SkyRise Hardwoods,10%
+Plywood Sheets,sheet,38.5,18mm Grade A,Sheathing and formwork,SkyRise Plywood,15%
+MDF Panels,sheet,24.5,15mm Standard,Interior finishes and cabinetry,SkyRise Composites,12%
+Laminated Beams,m³,685,Grade A,Structural support,SkyRise Engineered,11%
+Softwood Boarding,m³,338,Grade C,General construction use,SkyRise Budget,14%
+Glulam Beams,m³,750,Grade 24F,Premium structural support,SkyRise Premium Glulam,10%

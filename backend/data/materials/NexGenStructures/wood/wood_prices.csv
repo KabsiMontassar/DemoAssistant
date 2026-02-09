@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,456,Grade A,Framing and structural support,NexGen Timber Mills,12%
+Oak Timber,m³,812,Grade B,Flooring and decorative finishes,NexGen Hardwoods,10%
+Plywood Sheets,sheet,36.5,18mm Grade A,Sheathing and formwork,NexGen Plywood,15%
+MDF Panels,sheet,22.75,15mm Standard,Interior finishes and cabinetry,NexGen Composites,12%
+Laminated Beams,m³,672,Grade A,Structural support,NexGen Engineered Wood,11%
+Softwood Boarding,m³,326,Grade C,General construction use,NexGen Budget Lumber,14%
+Acoustic Plywood,sheet,45,Perforated Grade,Sound control,NexGen Acoustic,15%

@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,464,Grade A,Framing and structural support,OmniConstruct Timber,12%
+Oak Timber,m³,822,Grade B,Flooring and decorative finishes,OmniConstruct Hardwoods,10%
+Plywood Sheets,sheet,38,18mm Grade A,Sheathing and formwork,OmniConstruct Plywood,15%
+MDF Panels,sheet,24.25,15mm Standard,Interior finishes and cabinetry,OmniConstruct Composites,12%
+Laminated Beams,m³,682,Grade A,Structural support,OmniConstruct Engineered,11%
+Softwood Boarding,m³,334,Grade C,General construction use,OmniConstruct Budget,14%
+Cypress Lumber,m³,520,Grade A,Outdoor decking,OmniConstruct Outdoor,13%

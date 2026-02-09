@@ -1,0 +1,7 @@
+Material,Unit,Price,Strength,Application,Supplier,Lead Time
+Standard Concrete Mix,m³,92.5,25 MPa,General foundations and slabs,QuantumBuild Concrete,3 days
+High-Strength Concrete,m³,150.5,40 MPa,High-rise and bridge structures,QuantumBuild Premium,5 days
+Lightweight Concrete,m³,108.5,20 MPa,Interior walls and floors,QuantumBuild Lightweight,4 days
+Reinforced Concrete Formwork,set,3380,35 MPa,Structural elements,QuantumBuild Forms,6 days
+Self-Compacting Concrete,m³,129.5,30 MPa,Complex architectural elements,QuantumBuild Advanced,5 days
+Self-Healing Concrete,m³,155,32 MPa,Infrastructure resilience,QuantumBuild Intelligent,9 days

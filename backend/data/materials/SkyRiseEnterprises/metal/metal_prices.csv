@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.87,Grade 500,Concrete reinforcement,SkyRise Steel,Common
+Steel I-Beams,kg,1.26,Grade 250,Structural support,SkyRise Structural,Common
+Steel Channels,kg,1.21,Grade 250,Secondary structural use,SkyRise Channels,Common
+Aluminum Sheets,kg,2.54,6061 Alloy,Building cladding and panels,SkyRise Aluminum,Limited
+Copper Wire,kg,6.80,99.9% Pure,Electrical installations,SkyRise Electrical,Common
+Stainless Steel Plates,kg,3.90,304 Grade,Finishes and hardware,SkyRise Premium,Limited
+High-Strength Low-Alloy Steel,kg,1.15,HSLA Grade,Bridges and structures,SkyRise Advanced,Common

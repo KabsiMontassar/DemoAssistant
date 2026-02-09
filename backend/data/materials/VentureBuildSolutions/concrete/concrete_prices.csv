@@ -1,0 +1,7 @@
+Material,Unit,Price,Strength,Application,Supplier,Lead Time
+Standard Concrete Mix,m³,91,25 MPa,General foundations and slabs,VentureBuild Concrete,3 days
+High-Strength Concrete,m³,151,40 MPa,High-rise and bridge structures,VentureBuild Premium,5 days
+Lightweight Concrete,m³,107,20 MPa,Interior walls and floors,VentureBuild Light,4 days
+Reinforced Concrete Formwork,set,3350,35 MPa,Structural elements,VentureBuild Forms,6 days
+Self-Compacting Concrete,m³,131,30 MPa,Complex architectural elements,VentureBuild Smart,6 days
+Colored Decorative Concrete,m³,115,25 MPa,Architectural features,VentureBuild Colored,5 days

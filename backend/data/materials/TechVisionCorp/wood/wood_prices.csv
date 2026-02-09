@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,465,Grade A,Framing and structural support,TechVision Timber,12%
+Oak Timber,m³,820,Grade B,Flooring and decorative finishes,TechVision Hardwoods,10%
+Plywood Sheets,sheet,38,18mm Grade A,Sheathing and formwork,TechVision Plywood,15%
+MDF Panels,sheet,24,15mm Standard,Interior finishes and cabinetry,TechVision Composites,12%
+Laminated Beams,m³,680,Grade A,Structural support,TechVision Engineered,11%
+Softwood Boarding,m³,335,Grade C,General construction use,TechVision Budget,14%
+Cedar Shingles,m²,55,Premium Grade,Roofing and siding,TechVision Cedar,13%

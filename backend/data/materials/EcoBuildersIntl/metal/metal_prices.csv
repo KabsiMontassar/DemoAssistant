@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.88,Grade 500,Concrete reinforcement,EcoBuilders Steel,Common
+Steel I-Beams,kg,1.22,Grade 250,Structural support,EcoBuilders Structural,Common
+Steel Channels,kg,1.20,Grade 250,Secondary structural use,EcoBuilders Channels,Common
+Aluminum Sheets,kg,2.55,6061 Alloy,Building cladding and panels,EcoBuilders Aluminum,Limited
+Copper Wire,kg,6.60,99.9% Pure,Electrical installations,EcoBuilders Electrical,Common
+Stainless Steel Plates,kg,3.85,304 Grade,Finishes and hardware,EcoBuilders Premium,Limited
+Recycled Steel Beams,kg,0.95,Reclaimed Grade,Sustainable structures,EcoBuilders Recycle,Common

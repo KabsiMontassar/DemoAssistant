@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.85,Grade 500,Concrete reinforcement,VentureBuild Steel,Common
+Steel I-Beams,kg,1.24,Grade 250,Structural support,VentureBuild Structural,Common
+Steel Channels,kg,1.19,Grade 250,Secondary structural use,VentureBuild Channels,Common
+Aluminum Sheets,kg,2.50,6061 Alloy,Building cladding and panels,VentureBuild Aluminum,Limited
+Copper Wire,kg,6.75,99.9% Pure,Electrical installations,VentureBuild Electrical,Common
+Stainless Steel Plates,kg,3.87,304 Grade,Finishes and hardware,VentureBuild Premium,Limited
+Weathering Steel,kg,1.05,Corten Grade,Aesthetic structural use,VentureBuild Weathering,Common

@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.82,Grade 500,Concrete reinforcement,TechVision Steel,Common
+Steel I-Beams,kg,1.25,Grade 250,Structural support,TechVision Structural,Common
+Steel Channels,kg,1.18,Grade 250,Secondary structural use,TechVision Channels,Common
+Aluminum Sheets,kg,2.45,6061 Alloy,Building cladding and panels,TechVision Aluminum,Limited
+Copper Wire,kg,6.75,99.9% Pure,Electrical installations,TechVision Electrical,Common
+Stainless Steel Plates,kg,3.95,304 Grade,Finishes and hardware,TechVision Premium,Limited
+Galvanized Steel Coils,kg,1.05,DX51D Grade,Roofing and cladding,TechVision Coated,Common

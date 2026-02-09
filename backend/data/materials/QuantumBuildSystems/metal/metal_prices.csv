@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.88,Grade 500,Concrete reinforcement,QuantumBuild Steel,Common
+Steel I-Beams,kg,1.27,Grade 250,Structural support,QuantumBuild Structural,Common
+Steel Channels,kg,1.22,Grade 250,Secondary structural use,QuantumBuild Channels,Common
+Aluminum Sheets,kg,2.53,6061 Alloy,Building cladding and panels,QuantumBuild Aluminum,Limited
+Copper Wire,kg,6.78,99.9% Pure,Electrical installations,QuantumBuild Electrical,Common
+Stainless Steel Plates,kg,3.91,304 Grade,Finishes and hardware,QuantumBuild Premium,Limited
+Carbon Fiber Composite,kg,8.50,Aerospace Grade,Advanced structures,QuantumBuild Advanced,Rare

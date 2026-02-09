@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.86,Grade 500,Concrete reinforcement,Pinnacle Steel,Common
+Steel I-Beams,kg,1.28,Grade 250,Structural support,Pinnacle Structural,Common
+Steel Channels,kg,1.22,Grade 250,Secondary structural use,Pinnacle Channels,Common
+Aluminum Sheets,kg,2.52,6061 Alloy,Building cladding and panels,Pinnacle Aluminum,Limited
+Copper Wire,kg,6.85,99.9% Pure,Electrical installations,Pinnacle Electrical,Common
+Stainless Steel Plates,kg,3.92,304 Grade,Finishes and hardware,Pinnacle Premium,Limited
+Titanium Plates,kg,12.50,Grade 5,High-end structural use,Pinnacle Titanium,Rare

@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,466,Grade A,Framing and structural support,QuantumBuild Timber,12%
+Oak Timber,m³,824,Grade B,Flooring and decorative finishes,QuantumBuild Hardwoods,10%
+Plywood Sheets,sheet,39,18mm Grade A,Sheathing and formwork,QuantumBuild Plywood,15%
+MDF Panels,sheet,24.75,15mm Standard,Interior finishes and cabinetry,QuantumBuild Composites,12%
+Laminated Beams,m³,688,Grade A,Structural support,QuantumBuild Engineered,11%
+Softwood Boarding,m³,337,Grade C,General construction use,QuantumBuild Budget,14%
+Mass Timber/CLT,m³,850,Grade A,Modern construction,QuantumBuild Modern,10%

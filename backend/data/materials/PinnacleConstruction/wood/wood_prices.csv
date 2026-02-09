@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,470,Grade A,Framing and structural support,Pinnacle Timber,12%
+Oak Timber,m³,825,Grade B,Flooring and decorative finishes,Pinnacle Hardwoods,10%
+Plywood Sheets,sheet,39,18mm Grade A,Sheathing and formwork,Pinnacle Plywood,15%
+MDF Panels,sheet,25,15mm Standard,Interior finishes and cabinetry,Pinnacle Composites,12%
+Laminated Beams,m³,690,Grade A,Structural support,Pinnacle Engineered,11%
+Softwood Boarding,m³,340,Grade C,General construction use,Pinnacle Budget,14%
+Teak Lumber,m³,1200,Premium Grade,High-end finishes,Pinnacle Exotic,9%

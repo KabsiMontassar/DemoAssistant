@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.83,Grade 500,Concrete reinforcement,NexGen Steel Works,Common
+Steel I-Beams,kg,1.21,Grade 250,Structural support,NexGen Structural,Common
+Steel Channels,kg,1.16,Grade 250,Secondary structural use,NexGen Channels,Common
+Aluminum Sheets,kg,2.46,6061 Alloy,Building cladding and panels,NexGen Aluminum,Limited
+Copper Wire,kg,6.65,99.9% Pure,Electrical installations,NexGen Electrical,Common
+Stainless Steel Plates,kg,3.83,304 Grade,Finishes and hardware,NexGen Premium,Limited
+Double-Sided Aluminum Composite,kg,3.15,ACM Grade,Modern cladding,NexGen Composite,Limited

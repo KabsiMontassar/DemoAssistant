@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Moisture Content
+Pine Lumber,m³,455,Grade A,Framing and structural support,EcoBuilders Timber,12%
+Oak Timber,m³,810,Grade B,Flooring and decorative finishes,EcoBuilders Hardwoods,10%
+Plywood Sheets,sheet,36,18mm Grade A,Sheathing and formwork,EcoBuilders Plywood,15%
+MDF Panels,sheet,23,15mm Standard,Interior finishes and cabinetry,EcoBuilders Composites,12%
+Laminated Beams,m³,670,Grade A,Structural support,EcoBuilders Engineered,11%
+Softwood Boarding,m³,328,Grade C,General construction use,EcoBuilders Budget,14%
+FSC Certified Lumber,m³,520,Grade A,Sustainable construction,EcoBuilders FSC,11%

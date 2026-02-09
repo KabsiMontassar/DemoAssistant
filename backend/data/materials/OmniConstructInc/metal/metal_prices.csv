@@ -1,0 +1,8 @@
+Material,Unit,Price,Grade,Application,Supplier,Availability
+Steel Reinforcement Bars,kg,0.86,Grade 500,Concrete reinforcement,OmniConstruct Steel,Common
+Steel I-Beams,kg,1.25,Grade 250,Structural support,OmniConstruct Structural,Common
+Steel Channels,kg,1.20,Grade 250,Secondary structural use,OmniConstruct Channels,Common
+Aluminum Sheets,kg,2.51,6061 Alloy,Building cladding and panels,OmniConstruct Aluminum,Limited
+Copper Wire,kg,6.72,99.9% Pure,Electrical installations,OmniConstruct Electrical,Common
+Stainless Steel Plates,kg,3.89,304 Grade,Finishes and hardware,OmniConstruct Premium,Limited
+Cast Iron Pipes,kg,2.45,ASTM A48,Drainage systems,OmniConstruct Pipes,Common

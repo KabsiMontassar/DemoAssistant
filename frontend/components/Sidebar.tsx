@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { ChevronRight, ChevronDown, Folder, File, RotateCw } from 'lucide-react'
+import { getApiUrl } from '@/lib/api'
 
 interface FileNode {
   name: string
@@ -18,15 +19,6 @@ export default function Sidebar() {
 
   const fetchFileStructure = async () => {
     try {
-      const getApiUrl = () => {
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname;
-          if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-            return `http://${hostname}:8000`;
-          }
-        }
-        return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      }
       const apiBaseUrl = getApiUrl();
       const response = await fetch(`${apiBaseUrl}/api/file-structure`)
       const data = await response.json()
@@ -64,7 +56,7 @@ export default function Sidebar() {
 
   const handleFileClick = async (filePath: string, fileName: string) => {
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const apiBaseUrl = getApiUrl()
       const response = await fetch(`${apiBaseUrl}/api/download?path=${encodeURIComponent(filePath)}`)
 
       if (!response.ok) {

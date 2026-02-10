@@ -7,19 +7,8 @@ import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Globe } from 'lucide-react'
+import { API_BASE_URL } from '@/lib/api'
 
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    // If we're in Azure (not localhost), point to the same host but port 8000
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `http://${hostname}:8000`;
-    }
-  }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-}
-
-const API_BASE_URL = getApiUrl();
 
 interface Message {
   id: string

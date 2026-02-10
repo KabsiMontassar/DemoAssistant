@@ -12,8 +12,11 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install CPU-only PyTorch first (smaller than CUDA version)
+RUN pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining Python dependencies with increased timeout and retries
+RUN pip install --default-timeout=1000 --retries 5 -r requirements.txt
 
 # Copy application code
 COPY . .

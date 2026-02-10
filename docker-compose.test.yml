@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: atlas-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=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
+      - TAVILY_API_KEY=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
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+      - DATA_PATH=/app/data
+      - CHROMA_PATH=/app/data/chroma_db
+    volumes:
+      - ./backend/data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 1500M
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: atlas-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 500M

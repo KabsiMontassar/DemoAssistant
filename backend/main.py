@@ -40,8 +40,14 @@ logger = logging.getLogger(__name__)
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / '.env')
 
+# Set defaults for optional environment variables
+if not os.getenv('DATA_PATH'):
+    os.environ['DATA_PATH'] = './data'
+if not os.getenv('CHROMA_PATH'):
+    os.environ['CHROMA_PATH'] = './data/chroma_db'
+
 # Validate required environment variables
-REQUIRED_ENV_VARS = ['OPENROUTER_API_KEY', 'DATA_PATH', 'CHROMA_PATH']
+REQUIRED_ENV_VARS = ['OPENROUTER_API_KEY']
 missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
 if missing_vars:
     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")

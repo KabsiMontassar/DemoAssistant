@@ -121,14 +121,15 @@ async def lifespan(app: FastAPI):
         logger.info("✓ Initial embedding complete")
         
         # Initialize file watcher for automatic re-embedding on structure changes
+        base_path = _get_base_path()
         file_watcher = FileWatcher(
-            watch_path=os.getenv('DATA_PATH', './data/materials'),
+            watch_path=str(base_path),
             embedding_manager=embedding_manager,
             retriever_manager=retriever_manager,
             metadata_tracker=metadata_tracker
         )
         file_watcher.start()
-        logger.info("✓ File watcher started - monitoring structure for changes")
+        logger.info(f"✓ File watcher started on {base_path} - monitoring structure for changes")
         
         yield
         
@@ -409,6 +410,17 @@ async def reprocess_files():
         raise HTTPException(status_code=500, detail="Error reprocessing files")
 
 
+def _get_base_path():
+    """Helper to get the consistent base path for materials."""
+    data_path = Path(os.getenv('DATA_PATH', './data'))
+    materials_path = data_path / 'materials'
+    
+    # Check if materials directory exists within data_path
+    if materials_path.exists() and materials_path.is_dir():
+        return materials_path
+    return data_path
+
+
 @app.get("/api/file-structure")
 async def get_file_structure():
     """
@@ -418,15 +430,10 @@ async def get_file_structure():
         list: Hierarchical file structure
     """
     try:
-        data_path = os.getenv('DATA_PATH', './data/materials')
-        materials_path = os.path.join(data_path, 'materials')
-        
-        # Check if materials directory exists
-        if not os.path.exists(materials_path):
-            materials_path = data_path
+        base_path = _get_base_path()
         
         # Build the tree structure
-        file_structure = build_file_tree(materials_path)
+        file_structure = build_file_tree(str(base_path))
         return file_structure
         
     except Exception as e:
@@ -438,42 +445,38 @@ async def get_file_structure():
 async def download_file(path: str):
     """
     Download a file from the materials directory.
-    
-    Args:
-        path: Relative path to the file within materials (e.g., projectAcme/stone/stone_data.xlsx)
-        
-    Returns:
-        FileResponse: The file to download
+    Supports smart path resolution by checking both the materials subfolder and root data.
     """
     try:
-        data_path = Path(os.getenv('DATA_PATH', './data/materials'))
+        data_path = Path(os.getenv('DATA_PATH', './data'))
         
-        # Construct the full file path
-        # path is like "projectAcme/stone/stone_data.xlsx"
-        full_path = data_path / path
+        # Candidate paths to try
+        candidates = [
+            data_path / 'materials' / path, # Most likely (Sidebar paths are relative to materials)
+            data_path / path,               # Fallback (in case path already includes materials/ or data_path is deep)
+        ]
         
-        # Resolve the path to prevent directory traversal attacks
-        full_path = full_path.resolve()
-        base_abs = data_path.resolve()
+        full_path = None
+        for cand in candidates:
+            resolved = cand.resolve()
+            if resolved.exists() and resolved.is_file():
+                # Security check: ensure it's still under data_path
+                if str(resolved).startswith(str(data_path.resolve())):
+                    full_path = resolved
+                    break
         
-        # Verify the file is within the data directory
-        if not str(full_path).startswith(str(base_abs)):
-            logger.warning(f"Access denied: {full_path} is outside {base_abs}")
-            raise HTTPException(status_code=403, detail="Access denied")
+        if not full_path:
+            logger.warning(f"File not found among candidates for path: {path}")
+            # Log what we tried for debugging
+            for cand in candidates:
+                logger.debug(f"Tried: {cand.resolve()}")
+            raise HTTPException(status_code=404, detail=f"File not found: {path}. Please verify the file structure.")
         
-        # Check if file exists
-        if not full_path.exists() or not full_path.is_file():
-            logger.warning(f"File not found: {full_path}")
-            raise HTTPException(status_code=404, detail=f"File not found: {path}")
-        
-        # Get the file name for the download
-        file_name = full_path.name
-        
-        logger.info(f"Downloading file: {full_path}")
+        logger.info(f"Serving download for: {full_path}")
         
         return FileResponse(
             path=str(full_path),
-            filename=file_name,
+            filename=full_path.name,
             media_type='application/octet-stream'
         )
         

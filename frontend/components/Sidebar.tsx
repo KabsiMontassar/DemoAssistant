@@ -18,7 +18,7 @@ export default function Sidebar() {
 
   const fetchFileStructure = async () => {
     try {
-      const apiBaseUrl = 'http://localhost:8000'
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const response = await fetch(`${apiBaseUrl}/api/file-structure`)
       const data = await response.json()
       setFileStructure(data)
@@ -55,7 +55,8 @@ export default function Sidebar() {
 
   const handleFileClick = async (filePath: string, fileName: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/download?path=${encodeURIComponent(filePath)}`)
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${apiBaseUrl}/api/download?path=${encodeURIComponent(filePath)}`)
 
       if (!response.ok) {
         throw new Error('Download failed')

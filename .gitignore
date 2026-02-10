@@ -9,3 +9,4 @@
 /frontend/.env.local
 /deployment/azure-aci.yaml
 azure-aci.yaml
+docker-compose.test.yml

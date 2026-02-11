@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronRight, ChevronDown, Folder, File, RotateCw } from 'lucide-react'
 import { getApiUrl } from '@/lib/api'
+import { usePreview } from '@/context/PreviewContext'
 
 interface FileNode {
   name: string
@@ -12,6 +13,7 @@ interface FileNode {
 }
 
 export default function Sidebar() {
+  const { openPreview } = usePreview()
   const [fileStructure, setFileStructure] = useState<FileNode[] | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['materials', 'projectAcme', 'projectFacebook']))
   const [loading, setLoading] = useState(true)
@@ -54,28 +56,8 @@ export default function Sidebar() {
     })
   }
 
-  const handleFileClick = async (filePath: string, fileName: string) => {
-    try {
-      const apiBaseUrl = getApiUrl()
-      const response = await fetch(`${apiBaseUrl}/api/download?path=${encodeURIComponent(filePath)}`)
-
-      if (!response.ok) {
-        throw new Error('Download failed')
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Failed to download file:', error)
-      alert('Failed to download file')
-    }
+  const handleFileClick = (filePath: string, fileName: string) => {
+    openPreview(filePath)
   }
 
   const renderNode = (node: FileNode, level: number = 0): React.ReactNode => {

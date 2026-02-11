@@ -315,3 +315,6 @@ It is suitable both as a **sales POC** and as a **long-term enterprise solution*
 
 **Prepared for:** Enterprise Knowledge & AI Systems
 **Purpose:** Demo validation and production planning
+
+
+preview , model embedding path , view source

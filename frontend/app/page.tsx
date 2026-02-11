@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ChatInterface from '@/components/ChatInterface'
 import SourceCitation from '@/components/SourceCitation'
 import axios from 'axios'
@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Globe } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/api'
-
+import { usePreview } from '@/context/PreviewContext'
 
 interface Message {
   id: string
@@ -26,6 +26,7 @@ interface SourceType {
 }
 
 export default function Home() {
+  const { openPreview } = usePreview()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const [useWebSearch, setUseWebSearch] = useState(false)
@@ -56,6 +57,11 @@ export default function Home() {
       setSystemStatus('error')
       setError('Backend service unavailable. Please check if the backend is running.')
     }
+  }
+
+
+  const handlePreview = (source: SourceType) => {
+    openPreview(source.file_path, source.content_snippet)
   }
 
   const handleSendMessage = async (query: string) => {
@@ -120,7 +126,7 @@ export default function Home() {
   return (
     <div className="flex h-full flex-col font-sans">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-blue-100 flex-shrink-0 z-10 sticky top-0">
+      <header className="bg-white/80 backdrop-blur-sm flex-shrink-0 z-10 sticky top-0">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -140,7 +146,7 @@ export default function Home() {
       </header>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto w-full">
+      <div className="flex-1 overflow-y-auto h-full w-full">
         <div className="max-w-3xl mx-auto px-6 py-8 pb-32">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -226,7 +232,7 @@ export default function Home() {
                         </div>
                         <div className="grid gap-2">
                           {message.sources.map((source, idx) => (
-                            <SourceCitation key={idx} source={source} />
+                            <SourceCitation key={idx} source={source} onPreview={() => handlePreview(source)} />
                           ))}
                         </div>
                       </div>

@@ -38,19 +38,33 @@ class RetrieverManager:
         self.collection = embedding_manager.collection
         self.model = embedding_manager.model
     
+    def _get_dynamic_items(self) -> tuple[list[str], list[str]]:
+        """Discover projects and categories from the data directory."""
+        data_path = self.embedding_manager.data_path
+        if not data_path.exists():
+            return [], []
+            
+        projects = []
+        categories = set()
+        
+        for item in data_path.iterdir():
+            if item.is_dir() and not item.name.startswith('.'):
+                projects.append(item.name.lower())
+                # Look inside project for categories
+                for sub in item.iterdir():
+                    if sub.is_dir() and not sub.name.startswith('.'):
+                        categories.add(sub.name.lower())
+        
+        return projects, list(categories)
+
     def _detect_query_intent(self, query_lower: str) -> QueryIntent:
         """
         Detect the intent of the user's query to optimize retrieval strategy.
-        
-        Args:
-            query_lower: Lowercase query string
-            
-        Returns:
-            QueryIntent enum indicating the type of query
         """
-        # Count mentioned items
-        mentioned_projects = len(self._extract_mentioned_items(query_lower, ['projectacme', 'projectfacebook']))
-        mentioned_categories = len(self._extract_mentioned_items(query_lower, ['concrete', 'metal', 'stone', 'wood']))
+        projects, categories = self._get_dynamic_items()
+        
+        mentioned_projects = len(self._extract_mentioned_items(query_lower, projects))
+        mentioned_categories = len(self._extract_mentioned_items(query_lower, categories))
         
         # Comparison keywords
         comparison_keywords = ['compare', 'vs', 'versus', 'difference', 'between', 'rather', 'instead']
@@ -61,81 +75,61 @@ class RetrieverManager:
         has_spec_keyword = any(keyword in query_lower for keyword in spec_keywords)
         
         # Determination logic
-        # If comparing multiple categories or has comparison keywords -> COMPARISON
         if (mentioned_categories >= 2) or has_comparison_keyword:
-            logger.debug(f"Detected COMPARISON intent: {mentioned_categories} categories or comparison keyword")
             return QueryIntent.COMPARISON
         
-        # If has project AND category specifics -> SPECIFICATION
         if mentioned_projects >= 1 and mentioned_categories >= 1 and has_spec_keyword:
-            logger.debug(f"Detected SPECIFICATION intent: project + category + specification keyword")
             return QueryIntent.SPECIFICATION
         
-        # If has category but no specific project -> CATEGORY
         if mentioned_categories >= 1 and mentioned_projects == 0:
-            logger.debug(f"Detected CATEGORY intent: category without specific project")
             return QueryIntent.CATEGORY
         
-        # Default to GENERAL
-        logger.debug("Detected GENERAL intent: no specific markers")
         return QueryIntent.GENERAL
     
     def _extract_mentioned_items(self, query_lower: str, items: list[str]) -> list[str]:
         """
         Extract mentioned items (projects, categories) from the query.
-        Handles typos and spaces in words (e.g., "wo od" matches "wood").
-        
-        Args:
-            query_lower: Lowercase query string
-            items: List of items to search for (lowercase)
-            
-        Returns:
-            List of mentioned items found in the query
+        Handles typos and spaces in words (e.g., "sky rise" matches "SkyRiseEnterprises").
         """
         mentioned = []
-        query_normalized = query_lower.replace(" ", "")
+        # Create ultra-normalized query for flexible matching
+        query_normalized = query_lower.replace(" ", "").replace("-", "").replace("_", "")
         
         for item in items:
-            # Try exact match first (more specific)
-            if item in query_lower:
+            # Normalize item for matching
+            item_norm = item.replace(" ", "").replace("-", "").replace("_", "")
+            
+            # Try normalized match
+            if item_norm in query_normalized:
                 mentioned.append(item)
-            # Then try with flexible spaces (catches "wo od", "m etal", etc)
-            elif item.replace(" ", "") in query_normalized:
-                if item not in mentioned:  # Avoid duplicates
-                    mentioned.append(item)
+            # Support partial match for multi-word projects like "Sky Rise" -> "SkyRiseEnterprises"
+            elif any(part in query_normalized for part in item_norm.split() if len(part) > 3):
+                mentioned.append(item)
         
         return mentioned
     
     def _extract_path_project_and_category(self, file_path: str) -> tuple[str, str]:
         """
         Extract project name and category from file path.
-        Expected path format: projectXxx/category/filename
-        
-        Args:
-            file_path: File path (e.g., projectAcme/wood/wood_spec.pdf)
-            
-        Returns:
-            Tuple of (project_name, category) - both lowercase, empty string if not found
         """
-        path_lower = file_path.lower()
+        projects, categories = self._get_dynamic_items()
+        path_lower = file_path.lower().replace('\\', '/')
+        
         project = ""
         category = ""
         
-        # Extract project name
-        if "projectacme" in path_lower:
-            project = "projectacme"
-        elif "projectfacebook" in path_lower:
-            project = "projectfacebook"
+        for p in projects:
+            if p in path_lower:
+                project = p
+                break
         
-        # Extract category
-        categories = ['concrete', 'metal', 'stone', 'wood']
-        for cat in categories:
-            if cat in path_lower:
-                category = cat
+        for c in categories:
+            if c in path_lower:
+                category = c
                 break
         
         return project, category
-    
+
     def _apply_relevance_weights(
         self,
         base_score: float,
@@ -259,8 +253,9 @@ class RetrieverManager:
                 return []
             
             # Extract project name and categories from query for weighting
-            mentioned_projects = self._extract_mentioned_items(query_lower, ['projectacme', 'projectfacebook'])
-            mentioned_categories = self._extract_mentioned_items(query_lower, ['concrete', 'metal', 'stone', 'wood'])
+            projects, categories = self._get_dynamic_items()
+            mentioned_projects = self._extract_mentioned_items(query_lower, projects)
+            mentioned_categories = self._extract_mentioned_items(query_lower, categories)
             
             logger.debug(f"Mentioned projects: {mentioned_projects}, categories: {mentioned_categories}")
             logger.debug(f"Query intent: {query_intent.value}")

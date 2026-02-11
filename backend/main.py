@@ -316,14 +316,20 @@ async def chat(request: ChatRequest):
         )
         
         # Step 5: Format source citations (Local)
-        sources = [
-            SourceCitation(
-                file_path=chunk["source"]["file_path"],
-                content_snippet=chunk["text"][:200] + "...",
-                relevance_score=chunk["relevance"]["score"]
-            )
-            for chunk in ranking_engine.format_batch(reranked)
-        ]
+        # Deduplicate sources by file_path, keeping the highest score
+        unique_sources = {}
+        for chunk in ranking_engine.format_batch(reranked):
+            fpath = chunk["source"]["file_path"].replace('\\', '/')
+            score = chunk["relevance"]["score"]
+            
+            if fpath not in unique_sources or score > unique_sources[fpath].relevance_score:
+                unique_sources[fpath] = SourceCitation(
+                    file_path=fpath,
+                    content_snippet=chunk["text"][:200] + "...",
+                    relevance_score=score
+                )
+        
+        sources = list(unique_sources.values())
         
         # Step 6: Add Web Sources (if any)
         if "web_sources" in answer_result:
@@ -397,6 +403,8 @@ async def reprocess_files():
     
     try:
         logger.info("Starting manual reprocessing of all files...")
+        # Clear collection first to remove old/inconsistent path formats
+        embedding_manager.clear_collection()
         embedding_manager.embed_directory()
         stats = retriever_manager.get_stats()
         
@@ -447,44 +455,89 @@ async def download_file(path: str):
     Download a file from the materials directory.
     Supports smart path resolution by checking both the materials subfolder and root data.
     """
+    return await _serve_file(path, as_attachment=True)
+
+
+@app.get("/api/view")
+async def view_file(path: str):
+    """
+    View a file inline with proper content types for PDF, CSV, etc.
+    """
+    return await _serve_file(path, as_attachment=False)
+
+
+async def _serve_file(path: str, as_attachment: bool = True):
+    """Helper to serve files with correct headers and encoding."""
     try:
-        data_path = Path(os.getenv('DATA_PATH', './data'))
+        raw_data_path = os.getenv('DATA_PATH', './data/materials')
+        data_path = Path(raw_data_path).resolve()
+        
+        # Normalize slashes and remove leading slashes
+        clean_path = path.replace('\\', '/').lstrip('/')
         
         # Candidate paths to try
-        candidates = [
-            data_path / 'materials' / path, # Most likely (Sidebar paths are relative to materials)
-            data_path / path,               # Fallback (in case path already includes materials/ or data_path is deep)
-        ]
+        candidates = []
         
+        # Case 1: AI gives path like "materials/projectAcme/..." 
+        # but data_path IS already ".../materials"
+        if clean_path.startswith('materials/'):
+            sub_path = clean_path[len('materials/'):]
+            candidates.append(data_path / sub_path)
+            
+        # Case 2: Standard relative path
+        candidates.append(data_path / clean_path)
+        
+        # Case 3: Absolute or relative to data root
+        data_root = data_path.parent if data_path.name == 'materials' else data_path
+        candidates.append(data_root / clean_path)
+
         full_path = None
         for cand in candidates:
-            resolved = cand.resolve()
-            if resolved.exists() and resolved.is_file():
-                # Security check: ensure it's still under data_path
-                if str(resolved).startswith(str(data_path.resolve())):
-                    full_path = resolved
-                    break
+            try:
+                resolved = cand.resolve()
+                if resolved.exists() and resolved.is_file():
+                    # Security check: ensure it's under the project's data directory
+                    # We'll be a bit more permissive with the base check to allow data/ or backend/data/
+                    if 'data' in str(resolved).lower():
+                        full_path = resolved
+                        break
+            except Exception:
+                continue
         
         if not full_path:
-            logger.warning(f"File not found among candidates for path: {path}")
-            # Log what we tried for debugging
-            for cand in candidates:
-                logger.debug(f"Tried: {cand.resolve()}")
-            raise HTTPException(status_code=404, detail=f"File not found: {path}. Please verify the file structure.")
+            logger.error(f"File not found. Path: {path}, Clean: {clean_path}, Candidates: {[str(c) for c in candidates]}")
+            raise HTTPException(status_code=404, detail=f"File not found: {path}")
         
-        logger.info(f"Serving download for: {full_path}")
+        # Determine media type based on extension
+        ext = full_path.suffix.lower()
+        media_types = {
+            '.pdf': 'application/pdf',
+            '.csv': 'text/csv; charset=utf-8',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.xls': 'application/vnd.ms-excel',
+            '.txt': 'text/plain; charset=utf-8',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+        }
+        media_type = media_types.get(ext, 'application/octet-stream')
+        
+        content_disposition = 'attachment' if as_attachment else 'inline'
         
         return FileResponse(
             path=str(full_path),
             filename=full_path.name,
-            media_type='application/octet-stream'
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"{content_disposition}; filename=\"{full_path.name}\""
+            }
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error downloading file {path}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
+        logger.error(f"Error serving file {path}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error serving file: {str(e)}")
 
 
 def build_file_tree(directory: str, relative_path: str = ""):

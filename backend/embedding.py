@@ -7,15 +7,31 @@ Supports .xlsx and .pdf file formats
 """
 
 import os
+import re
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 import chromadb
 from sentence_transformers import SentenceTransformer
 import openpyxl
 from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
+
+
+def split_camel_case(name: str) -> str:
+    """Split CamelCase into separate words."""
+    return re.sub(r'(?<!^)(?=[A-Z])', ' ', name)
+
+def normalize_project_name(folder: str) -> str:
+    """Convert folder name to human-readable project name."""
+    name = folder.replace('_', ' ').replace('-', ' ')
+    name = split_camel_case(name)
+    return name.strip().title()
+
+def get_project_id(folder: str) -> str:
+    """Generate stable machine-readable project ID."""
+    return folder.lower().replace('_', '').replace('-', '').strip()
 
 
 class EmbeddingManager:
@@ -138,13 +154,16 @@ class EmbeddingManager:
             return ""
 
     
-    def _chunk_text(self, text: str, file_path: str) -> list[dict]:
+    def _chunk_text(self, text: str, file_path: str, project_name: str, project_id: str) -> list[dict]:
         """
         Split text into overlapping chunks for better embedding quality.
+        Injects project context into each chunk.
         
         Args:
             text: Full document text
             file_path: Source file path (for metadata)
+            project_name: Normalized project name
+            project_id: Stable project ID
             
         Returns:
             List of chunk dictionaries with text and metadata
@@ -156,13 +175,24 @@ class EmbeddingManager:
         
         current_chunk = ""
         
+        # Context header to prepend to each chunk
+        context_header = f"Project: {project_name}\nFile: {Path(file_path).name}\n\n"
+        
         for paragraph in paragraphs:
             # If adding this paragraph would exceed chunk_size, save current chunk
+            # Note: We don't count context_header in chunk length limit check to avoid strict cutting,
+            # but usually it's small.
             if len(current_chunk) + len(paragraph) > self.chunk_size and current_chunk:
+                
+                # Combine context + content for embedding
+                full_text = context_header + current_chunk.strip()
+                
                 chunks.append({
-                    'text': current_chunk.strip(),
+                    'text': full_text,
                     'file_path': file_path,
-                    'length': len(current_chunk)
+                    'length': len(full_text),
+                    'project_id': project_id,
+                    'project_name': project_name
                 })
                 
                 # Create overlap by including last part of previous chunk
@@ -172,10 +202,13 @@ class EmbeddingManager:
         
         # Add final chunk
         if current_chunk.strip():
+            full_text = context_header + current_chunk.strip()
             chunks.append({
-                'text': current_chunk.strip(),
+                'text': full_text,
                 'file_path': file_path,
-                'length': len(current_chunk)
+                'length': len(full_text),
+                'project_id': project_id,
+                'project_name': project_name
             })
         
         return chunks
@@ -225,22 +258,43 @@ class EmbeddingManager:
             
             # Get relative path for cleaner storage
             try:
-                relative_path = file_path.relative_to(self.data_path)
-            except ValueError:
-                relative_path = file_path.name
+                # Always resolve paths for comparison
+                data_path_abs = self.data_path.resolve()
+                file_path_abs = file_path.resolve()
+                
+                # Calculate relative path
+                if file_path_abs.is_relative_to(data_path_abs):
+                    relative_path = file_path_abs.relative_to(data_path_abs)
+                else:
+                    # Fallback if not under data_path
+                    relative_path = Path(file_path.name)
+                
+                # Normalize to forward slashes and strip redundant 'materials/' if it somehow got in
+                rel_str = str(relative_path).replace('\\', '/')
+                if rel_str.startswith('materials/'):
+                    rel_str = rel_str[len('materials/'):]
+                
+                normalized_path = rel_str
+                
+            except Exception as e:
+                logger.warning(f"Path normalization failed for {file_path}: {e}")
+                normalized_path = file_path.name.replace('\\', '/')
             
-            # Remove old embeddings for this file (handle re-embedding)
+            # Remove old embeddings for this file using normalized path
             try:
                 self.collection.delete(
-                    where={"file_path": str(relative_path)}
+                    where={"file_path": normalized_path}
                 )
-                logger.info(f"Cleared old embeddings for: {relative_path}")
+                logger.info(f"Cleared old embeddings for: {normalized_path}")
             except Exception as e:
-                # File might not exist yet, which is fine
                 logger.debug(f"No previous embeddings to clear: {e}")
             
-            # Chunk the document
-            chunks = self._chunk_text(content, str(relative_path))
+            # Chunk the document with project context
+            folder_name = file_path.parent.name
+            project_name = normalize_project_name(folder_name)
+            project_id = get_project_id(folder_name)
+            
+            chunks = self._chunk_text(content, normalized_path, project_name, project_id)
             
             if not chunks:
                 logger.warning(f"No chunks created from: {file_path}")
@@ -248,17 +302,19 @@ class EmbeddingManager:
             
             # Generate embeddings
             texts = [chunk['text'] for chunk in chunks]
-            logger.info(f"Generating embeddings for {len(chunks)} chunks...")
+            logger.info(f"Generating embeddings for {len(chunks)} chunks (Project: {project_name})...")
             
             embeddings = self.model.encode(texts, show_progress_bar=False).tolist()
             
             # Prepare documents for storage
-            ids = [f"{relative_path}_{i}" for i in range(len(chunks))]
+            ids = [f"{normalized_path}_{i}" for i in range(len(chunks))]
             metadatas = [
                 {
                     "file_path": chunk['file_path'],
                     "chunk_index": str(i),
-                    "chunk_length": str(chunk['length'])
+                    "chunk_length": str(chunk['length']),
+                    "project_id": chunk['project_id'],
+                    "project_name": chunk['project_name']
                 }
                 for i, chunk in enumerate(chunks)
             ]
@@ -364,11 +420,13 @@ class EmbeddingManager:
         WARNING: This is a destructive operation.
         """
         try:
-            # Get all documents and delete them
-            results = self.collection.get()
-            if results['ids']:
-                self.collection.delete(ids=results['ids'])
-                logger.warning(f"Cleared {len(results['ids'])} documents from collection")
+            logger.warning(f"Deleting and recreating collection: {self.collection.name}")
+            self.client.delete_collection(self.collection.name)
+            self.collection = self.client.get_or_create_collection(
+                name="material_pricing",
+                metadata={"hnsw:space": "cosine"}
+            )
+            logger.info("✓ Collection cleared and recreated")
         except Exception as e:
             logger.error(f"Error clearing collection: {str(e)}", exc_info=True)
             raise

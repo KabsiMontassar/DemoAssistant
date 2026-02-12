@@ -25,6 +25,14 @@ interface SourceType {
   relevance_score: number
 }
 
+// Type for streaming events
+interface StreamEvent {
+  type: 'status' | 'result' | 'error'
+  message?: string
+  details?: string
+  data?: any
+}
+
 export default function Home() {
   const { openPreview } = usePreview()
   const [messages, setMessages] = useState<Message[]>([])
@@ -82,28 +90,90 @@ export default function Home() {
     setError(null)
 
     try {
-      // Call backend API
-      const response = await axios.post(`${API_BASE_URL}/api/chat`, {
-        query: query,
-        use_web_search: useWebSearch,
+      // Use fetch for streaming response
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: query,
+          use_web_search: useWebSearch,
+        }),
       })
 
-      // Add assistant message with sources
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.data.response,
-        sources: response.data.sources || [],
-        timestamp: new Date(),
-        usedWebSearch: response.data.web_search_used,
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('Response body is null')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+
+        // Process all complete lines
+        buffer = lines.pop() || '' // Keep the last incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+
+          try {
+            const event: StreamEvent = JSON.parse(line)
+
+            if (event.type === 'result') {
+              const data = event.data
+              // Add assistant message with sources
+              const assistantMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: data.response,
+                sources: data.sources || [],
+                timestamp: new Date(),
+                usedWebSearch: data.web_search_used,
+              }
+              setMessages((prev) => [...prev, assistantMessage])
+            } else if (event.type === 'error') {
+              throw new Error(event.message || 'Unknown error occurred')
+            }
+          } catch (e) {
+            console.error('Error parsing stream line:', line, e)
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        try {
+          const event: StreamEvent = JSON.parse(buffer)
+          if (event.type === 'result') {
+            const data = event.data
+            const assistantMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: data.response,
+              sources: data.sources || [],
+              timestamp: new Date(),
+              usedWebSearch: data.web_search_used,
+            }
+            setMessages((prev) => [...prev, assistantMessage])
+          }
+        } catch (e) {
+          console.error('Error parsing final buffer:', buffer, e)
+        }
+      }
+
       setSystemStatus('healthy')
-    } catch (err) {
-      const errorMessage = axios.isAxiosError(err)
-        ? err.response?.data?.detail || err.message
-        : 'Failed to process query'
+    } catch (err: any) {
+      console.error('Chat error:', err)
+      const errorMessage = err.message || 'Failed to process query'
 
       // Add error message
       const errorMsg: Message = {
@@ -240,6 +310,7 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+
               <div ref={messagesEndRef} />
             </div>
           )}

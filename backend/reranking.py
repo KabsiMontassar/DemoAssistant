@@ -5,6 +5,7 @@ Implements cross-encoder style re-ranking before final answer generation.
 """
 
 import logging
+import re
 from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -33,37 +34,29 @@ class ReRankingEngine:
     def _extract_project_name(self, query: str) -> Optional[str]:
         """
         Extract project name from query if mentioned.
-        
-        Args:
-            query: User query
-            
-        Returns:
-            Project name if found, None otherwise
+        Note: PromptVerifier now handles this better, but we keep this as a secondary check.
         """
         query_lower = query.lower()
         
-        # Check if any project name appears in query
+        # Check if any project name appears in query as a whole word
         for project in self.project_names:
-            if project.lower() in query_lower:
+            pattern = r'\b' + re.escape(project.lower()) + r'\b'
+            if re.search(pattern, query_lower):
                 return project
         
         return None
     
     def rerank_with_query_similarity(self, 
                                     query: str,
-                                    chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+                                    chunks: List[Dict[str, Any]],
+                                    target_projects: List[str] = None) -> List[Dict[str, Any]]:
         """
         Re-rank chunks by computing semantic similarity score to original query.
         
-        This is a lightweight re-ranking that:
-        1. Checks if key query terms appear in chunk text
-        2. Scores based on term frequency and position
-        3. Boosts chunks that directly answer the query
-        4. FILTERS by project name if mentioned in query
-        
         Args:
-            query: Original user query
+            query: Original user query (normalized)
             chunks: List of chunks with scores
+            target_projects: List of project names explicitly mentioned in query
             
         Returns:
             Re-ranked chunks with new relevance scores
@@ -72,28 +65,30 @@ class ReRankingEngine:
         query_terms = set(query_lower.split())
         
         # Extract important terms (remove common words)
-        stopwords = {'the', 'a', 'an', 'is', 'are', 'of', 'for', 'and', 'or', 'in', 'on', 'at', 'to', 'from', 'what', 'is', 'the', 'how', 'when', 'where', 'why', 'which', 'who'}
+        stopwords = {'the', 'a', 'an', 'is', 'are', 'of', 'for', 'and', 'or', 'in', 'on', 'at', 'to', 'from', 'what', 'how', 'when', 'where', 'why', 'which', 'who'}
         important_terms = [t for t in query_terms if t not in stopwords and len(t) > 2]
         
-        # Extract project name if mentioned
-        target_project = self._extract_project_name(query)
+        # Use provided projects or extract if not provided
+        projects = target_projects if target_projects is not None else [self._extract_project_name(query)]
+        projects = [p for p in projects if p] # Remove None
         
         reranked = []
         
         for chunk in chunks:
             text = chunk.get("text", "").lower()
             file_path = chunk.get("metadata", {}).get("file_path", "").lower()
+            metadata_project = chunk.get("metadata", {}).get("project_name", "").lower()
             
             # STRICT PROJECT FILTERING: If project mentioned in query, heavily penalize mismatches
-            if target_project:
-                target_project_lower = target_project.lower()
-                if target_project_lower not in file_path:
+            if projects:
+                is_match = any(p.lower() in file_path or p.lower() == metadata_project for p in projects)
+                if not is_match:
                     # Wrong project - give minimal score
-                    logger.debug(f"Penalizing non-matching project: {file_path} (looking for {target_project})")
+                    logger.debug(f"Penalizing non-matching project: {file_path} (looking for {projects})")
                     chunk_copy = chunk.copy()
-                    chunk_copy["rerank_score"] = 0.1  # Very low score for wrong project
-                    chunk_copy["scores"] = chunk.get("scores", {})
-                    chunk_copy["scores"]["rerank_score"] = 0.1
+                    chunk_copy["rerank_score"] = 0.05  # Even lower score for wrong project
+                    chunk_copy["scores"] = chunk.get("scores", {}).copy()
+                    chunk_copy["scores"]["rerank_score"] = 0.05
                     reranked.append(chunk_copy)
                     continue
             
@@ -122,11 +117,13 @@ class ReRankingEngine:
         reranked.sort(key=lambda x: x["rerank_score"], reverse=True)
         
         # Filter out low-scoring mismatches if project was specified
-        if target_project:
-            target_project_lower = target_project.lower()
-            matching = [c for c in reranked if target_project_lower in c.get("metadata", {}).get("file_path", "").lower()]
+        if projects:
+            matching = [
+                c for c in reranked 
+                if any(p.lower() in c.get("metadata", {}).get("file_path", "").lower() or p.lower() == c.get("metadata", {}).get("project_name", "").lower() for p in projects)
+            ]
             if matching:
-                logger.info(f"Project filtering: keeping {len(matching)} matching results, filtering {len(reranked) - len(matching)} mismatches")
+                logger.info(f"Project filtering: keeping {len(matching)} matching results, filtering {len(reranked) - len(matching)} mismatches for {projects}")
                 reranked = matching
         
         logger.debug(f"Re-ranked {len(reranked)} chunks for query: {query[:50]}")
@@ -185,23 +182,22 @@ class ReRankingEngine:
     def rerank_with_relevance_scoring(self,
                                      query: str,
                                      chunks: List[Dict[str, Any]],
+                                     target_projects: List[str] = None,
                                      top_k: int = 5) -> List[Dict[str, Any]]:
         """
         Combined re-ranking using multiple signals.
         
         Args:
-            query: Original query
+            query: Original query (already normalized/fixed by PromptVerifier)
             chunks: Chunks to re-rank
+            target_projects: List of projects detected in query
             top_k: Return top K results after re-ranking
             
         Returns:
             Top K re-ranked chunks
         """
-        # Apply query similarity re-ranking
-        reranked = self.rerank_with_query_similarity(query, chunks)
-        
-        # Filter by relevance (optional)
-        # Could add threshold: reranked = [c for c in reranked if c["rerank_score"] > 0.3]
+        # Apply query similarity re-ranking which handles project filtering
+        reranked = self.rerank_with_query_similarity(query, chunks, target_projects=target_projects)
         
         # Return top K
         return reranked[:top_k]

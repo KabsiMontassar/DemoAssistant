@@ -13,10 +13,11 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 import json
+import asyncio
 
 from embedding import EmbeddingManager
 from retrieval import RetrieverManager
@@ -233,20 +234,12 @@ async def health_check():
     )
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
     Main chat endpoint for material pricing queries.
-    Uses full pipeline: retrieval -> scoring -> ranking -> answer generation.
-    
-    Args:
-        request: ChatRequest containing query and web search flag
-        
-    Returns:
-        ChatResponse with AI response and source citations
-        
-    Raises:
-        HTTPException: If components are not initialized or request is invalid
+    Uses full pipeline: verification -> retrieval -> scoring -> ranking -> answer generation.
+    Returns a stream of status updates and the final result.
     """
     # Validate request
     if not request.query or len(request.query.strip()) == 0:
@@ -258,135 +251,159 @@ async def chat(request: ChatRequest):
     # Verify managers are initialized
     if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine, prompt_verifier]):
         raise HTTPException(status_code=503, detail="Service not fully initialized")
-    
-    try:
-        logger.info(f"Processing query: {request.query[:100]}...")
-        
-        # Step 0: Verify and fix the prompt
-        verification_result = prompt_verifier.verify_and_fix(request.query)
-        
-        if not verification_result['is_valid']:
-            raise HTTPException(status_code=400, detail=verification_result['error'])
-        
-        # Use the fixed query for the rest of the pipeline
-        fixed_query = verification_result['fixed_query']
-        
-        # Log if changes were made
-        if verification_result['changes_made']:
-            logger.info(f"Query corrections applied: {', '.join(verification_result['changes_made'])}")
-            logger.info(f"Original: '{verification_result['original_query']}'")
-            logger.info(f"Fixed: '{fixed_query}'")
-        
-        # Step 1: Retrieve relevant chunks from vector DB using FIXED query
-        retrieved = retriever_manager.retrieve(query=fixed_query, top_k=10)
-        
-        chunks = []
-        vector_scores = []
-        
-        if retrieved:
-            # Format retrieved results into chunks with metadata
-            for r in retrieved:
-                chunks.append({
-                    "text": r.get("content", ""),
-                    "metadata": {
-                        "file_path": r.get("file_path", "unknown"),
-                        "chunk_index": r.get("chunk_index", 0),
-                        "semantic_type": "general"
-                    }
-                })
-                vector_scores.append(r.get("score", 0))
-        
-        # Step 2: Rank results with scoring (if any local chunks)
-        ranked = []
-        if chunks:
-            ranked = ranking_engine.rank_results(
-                chunks=chunks,
-                vector_scores=vector_scores,
+
+    async def event_generator():
+        try:
+            logger.info(f"Processing query: {request.query[:100]}...")
+            
+            # Step 0: Verify and fix prompt
+            yield json.dumps({"type": "status", "stage": "verification", "message": "Verifying and cleaning prompt..."}) + "\n"
+            await asyncio.sleep(0.1) # Tiny yield to ensure frontend receives it
+            
+            verification_result = prompt_verifier.verify_and_fix(request.query)
+            
+            if not verification_result['is_valid']:
+                error_msg = verification_result['error']
+                yield json.dumps({"type": "error", "message": error_msg}) + "\n"
+                return
+
+            fixed_query = verification_result['fixed_query']
+            detected_projects = verification_result.get('detected_projects', [])
+            
+            if verification_result['changes_made']:
+                changes = ", ".join(verification_result['changes_made'])
+                yield json.dumps({
+                    "type": "status", 
+                    "stage": "verification_complete", 
+                    "message": f"Fixed prompt: {fixed_query}",
+                    "details": changes
+                }) + "\n"
+                logger.info(f"Fixed: '{fixed_query}'")
+
+            # Step 1: Retrieval
+            yield json.dumps({"type": "status", "stage": "retrieval", "message": "Searching knowledge base..."}) + "\n"
+            
+            # Extract material categories from prompt_verifier if available
+            detected_categories = [c for c in prompt_verifier.material_categories if c in fixed_query.lower()]
+            
+            retrieved = retriever_manager.retrieve(
+                query=fixed_query, 
                 top_k=10,
-                min_confidence="low"
-            )
-        
-        # Step 3: RE-RANK with query-aware re-ranking (if any ranked chunks)
-        reranked = []
-        if ranked:
-            reranked = reranking_engine.rerank_with_relevance_scoring(
-                query=fixed_query,  # Use fixed query
-                chunks=ranked,
-                top_k=5
+                mentioned_projects=detected_projects,
+                mentioned_categories=detected_categories
             )
             
-            # Check if confidence should be reduced based on re-ranking
-            if reranked and reranking_engine.should_confidence_be_reduced(fixed_query, reranked[0]):
-                logger.warning("Re-ranking detected weak match, reducing confidence")
-                for chunk in reranked:
-                    chunk["scores"]["confidence"] = "low"
-        
-        # Guard: If no local results AND no web search, then return early
-        if not reranked and not request.use_web_search:
-            return ChatResponse(
-                response="I couldn't find any specific information matching your query in the Atlas database. Please try broadening your search or enabling web search for current market data.",
-                sources=[],
-                web_search_used=False
-            )
-        
-        # Step 4: Generate answer using LLM with FIXED query
-        answer_result = llm_manager.generate_answer(
-            query=fixed_query,  # Use fixed query
-            retrieved_chunks=reranked,
-            use_web_search=request.use_web_search
-        )
-        
-        # Step 5: Format source citations (Local)
-        # Deduplicate sources by file_path, keeping the highest score
-        unique_sources = {}
-        for chunk in ranking_engine.format_batch(reranked):
-            fpath = chunk["source"]["file_path"].replace('\\', '/')
-            score = chunk["relevance"]["score"]
+            chunks = []
+            vector_scores = []
             
-            if fpath not in unique_sources or score > unique_sources[fpath].relevance_score:
-                unique_sources[fpath] = SourceCitation(
-                    file_path=fpath,
-                    content_snippet=chunk["text"][:200] + "...",
-                    relevance_score=score
+            if retrieved:
+                for r in retrieved:
+                    chunks.append({
+                        "text": r.get("content", ""),
+                        "metadata": {
+                            "file_path": r.get("file_path", "unknown"),
+                            "project_name": r.get("project_name", "unknown"), # Ensure project_name is passed
+                            "chunk_index": r.get("chunk_index", 0),
+                            "semantic_type": "general"
+                        }
+                    })
+                    vector_scores.append(r.get("score", 0))
+
+            # Step 2: Ranking
+            yield json.dumps({"type": "status", "stage": "ranking", "message": f"Analyzing {len(chunks)} documents..."}) + "\n"
+            
+            ranked = []
+            if chunks:
+                # Pass the first detected project for primary scoring boost
+                primary_project = detected_projects[0] if detected_projects else None
+                ranked = ranking_engine.rank_results(
+                    chunks=chunks,
+                    vector_scores=vector_scores,
+                    query_project=primary_project,
+                    top_k=10,
+                    min_confidence="low"
                 )
-        
-        sources = list(unique_sources.values())
-        
-        # Step 6: Add Web Sources (if any)
-        if "web_sources" in answer_result:
-            for ws in answer_result["web_sources"]:
-                sources.append(
-                    SourceCitation(
-                        file_path=ws["url"] if ws["url"] else f"Web: {ws['title']}",
-                        content_snippet=ws["content"],
-                        relevance_score=0.95  # Slightly lower than top matches but still high
+
+            # Step 3: Re-ranking
+            yield json.dumps({"type": "status", "stage": "reranking", "message": "Refining results for relevance..."}) + "\n"
+            
+            reranked = []
+            if ranked:
+                # Update reranking to handle project filtering
+                reranked = reranking_engine.rerank_with_relevance_scoring(
+                    query=fixed_query,
+                    chunks=ranked,
+                    target_projects=detected_projects,
+                    top_k=5
+                )
+                
+                if reranked and reranking_engine.should_confidence_be_reduced(fixed_query, reranked[0]):
+                    logger.warning("Re-ranking detected weak match, reducing confidence")
+                    for chunk in reranked:
+                        chunk["scores"]["confidence"] = "low"
+
+            # Guard check
+            if not reranked and not request.use_web_search:
+                response_data = {
+                    "response": "I couldn't find any specific information matching your query in the Atlas database. Please try broadening your search or enabling web search for current market data.",
+                    "sources": [],
+                    "web_search_used": False
+                }
+                yield json.dumps({"type": "result", "data": response_data}) + "\n"
+                return
+
+            # Step 4: Generation
+            yield json.dumps({"type": "status", "stage": "generation", "message": "Synthesizing final answer..."}) + "\n"
+            
+            answer_result = llm_manager.generate_answer(
+                query=fixed_query,
+                retrieved_chunks=reranked,
+                use_web_search=request.use_web_search
+            )
+
+            # Format chunks for response (similar to original code)
+            unique_sources = {}
+            for chunk in ranking_engine.format_batch(reranked):
+                fpath = chunk["source"]["file_path"].replace('\\', '/')
+                score = chunk["relevance"]["score"]
+                
+                if fpath not in unique_sources or score > unique_sources[fpath].relevance_score:
+                    unique_sources[fpath] = SourceCitation(
+                        file_path=fpath,
+                        content_snippet=chunk["text"][:200] + "...",
+                        relevance_score=score
                     )
-                )
-        
-        # Filter out sources if the AI provides a negative response
-        negative_keywords = ["don't have that information", "couldn't find any specific information", "information not found"]
-        if any(keyword in answer_result["answer"].lower() for keyword in negative_keywords):
-            sources = []
             
-        return ChatResponse(
-            response=answer_result["answer"],
-            sources=sources,
-            web_search_used=answer_result["web_search_used"]
-        )
-        
-    except Exception as e:
-        error_msg = str(e)
-        logger.error(f"Error processing chat request: {error_msg}", exc_info=True)
-        
-        # Return appropriate HTTP status codes based on error type
-        if "Invalid API key" in error_msg:
-            raise HTTPException(status_code=401, detail="Invalid OpenRouter API key. Please check your configuration.")
-        elif "Rate limit" in error_msg:
-            raise HTTPException(status_code=429, detail="API rate limit exceeded. Please try again later.")
-        elif "401" in error_msg or "Unauthorized" in error_msg:
-            raise HTTPException(status_code=401, detail="Authentication error. Check your API key.")
-        else:
-            raise HTTPException(status_code=500, detail=f"Error processing request: {error_msg}")
+            sources = list(unique_sources.values())
+            
+            if "web_sources" in answer_result:
+                for ws in answer_result["web_sources"]:
+                    sources.append(
+                        SourceCitation(
+                            file_path=ws["url"] if ws["url"] else f"Web: {ws['title']}",
+                            content_snippet=ws["content"],
+                            relevance_score=0.95
+                        )
+                    )
+
+            # Filter negative responses
+            negative_keywords = ["don't have that information", "couldn't find any specific information", "information not found"]
+            if any(keyword in answer_result["answer"].lower() for keyword in negative_keywords):
+                sources = []
+
+            final_response = {
+                "response": answer_result["answer"],
+                "sources": [s.model_dump() for s in sources], # Convert Pydantic models to dict
+                "web_search_used": answer_result["web_search_used"]
+            }
+            
+            yield json.dumps({"type": "result", "data": final_response}) + "\n"
+            
+        except Exception as e:
+            logger.error(f"Stream error: {str(e)}", exc_info=True)
+            yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 
 

@@ -39,18 +39,26 @@ class RetrieverManager:
         self.model = embedding_manager.model
     
     def _detect_query_intent(self, query_lower: str) -> QueryIntent:
+        """Deprecated: Use _detect_query_intent_with_context"""
+        m_projects = self._extract_mentioned_items(query_lower, ['projectacme', 'projectfacebook'])
+        m_categories = self._extract_mentioned_items(query_lower, ['concrete', 'metal', 'stone', 'wood'])
+        return self._detect_query_intent_with_context(query_lower, m_projects, m_categories)
+
+    def _detect_query_intent_with_context(self, query_lower: str, mentioned_projects: list[str], mentioned_categories: list[str]) -> QueryIntent:
         """
-        Detect the intent of the user's query to optimize retrieval strategy.
+        Detect the intent of the user's query with provided context.
         
         Args:
             query_lower: Lowercase query string
+            mentioned_projects: List of detected projects
+            mentioned_categories: List of detected categories
             
         Returns:
             QueryIntent enum indicating the type of query
         """
         # Count mentioned items
-        mentioned_projects = len(self._extract_mentioned_items(query_lower, ['projectacme', 'projectfacebook']))
-        mentioned_categories = len(self._extract_mentioned_items(query_lower, ['concrete', 'metal', 'stone', 'wood']))
+        num_projects = len(mentioned_projects)
+        num_categories = len(mentioned_categories)
         
         # Comparison keywords
         comparison_keywords = ['compare', 'vs', 'versus', 'difference', 'between', 'rather', 'instead']
@@ -62,22 +70,18 @@ class RetrieverManager:
         
         # Determination logic
         # If comparing multiple categories or has comparison keywords -> COMPARISON
-        if (mentioned_categories >= 2) or has_comparison_keyword:
-            logger.debug(f"Detected COMPARISON intent: {mentioned_categories} categories or comparison keyword")
+        if (num_categories >= 2) or has_comparison_keyword:
             return QueryIntent.COMPARISON
         
         # If has project AND category specifics -> SPECIFICATION
-        if mentioned_projects >= 1 and mentioned_categories >= 1 and has_spec_keyword:
-            logger.debug(f"Detected SPECIFICATION intent: project + category + specification keyword")
+        if num_projects >= 1 and num_categories >= 1 and has_spec_keyword:
             return QueryIntent.SPECIFICATION
         
         # If has category but no specific project -> CATEGORY
-        if mentioned_categories >= 1 and mentioned_projects == 0:
-            logger.debug(f"Detected CATEGORY intent: category without specific project")
+        if num_categories >= 1 and num_projects == 0:
             return QueryIntent.CATEGORY
         
         # Default to GENERAL
-        logger.debug("Detected GENERAL intent: no specific markers")
         return QueryIntent.GENERAL
     
     def _extract_mentioned_items(self, query_lower: str, items: list[str]) -> list[str]:
@@ -109,31 +113,27 @@ class RetrieverManager:
     def _extract_path_project_and_category(self, file_path: str) -> tuple[str, str]:
         """
         Extract project name and category from file path.
-        Expected path format: projectXxx/category/filename
+        Expected path format: ProjectName/category/filename
         
         Args:
-            file_path: File path (e.g., projectAcme/wood/wood_spec.pdf)
+            file_path: File path (e.g., OmniConstructInc/wood/wood_prices.csv)
             
         Returns:
-            Tuple of (project_name, category) - both lowercase, empty string if not found
+            Tuple of (project_name, category)
         """
-        path_lower = file_path.lower()
+        parts = file_path.replace("\\", "/").split('/')
+        
         project = ""
         category = ""
         
-        # Extract project name
-        if "projectacme" in path_lower:
-            project = "projectacme"
-        elif "projectfacebook" in path_lower:
-            project = "projectfacebook"
-        
-        # Extract category
-        categories = ['concrete', 'metal', 'stone', 'wood']
-        for cat in categories:
-            if cat in path_lower:
-                category = cat
-                break
-        
+        # If we have at least 2 parts (Project/Category/File)
+        if len(parts) >= 2:
+            project = parts[0]
+            category = parts[1]
+        elif len(parts) == 1:
+            # Maybe just project/file or just file?
+            project = parts[0]
+            
         return project, category
     
     def _apply_relevance_weights(
@@ -213,7 +213,9 @@ class RetrieverManager:
         self,
         query: str,
         top_k: int = 5,
-        distance_threshold: Optional[float] = None
+        distance_threshold: Optional[float] = None,
+        mentioned_projects: list[str] = None,
+        mentioned_categories: list[str] = None
     ) -> list[dict]:
         """
         Retrieve the most relevant document chunks for a query.
@@ -223,13 +225,11 @@ class RetrieverManager:
             query: Query string (natural language question)
             top_k: Number of top results to return (default: 5)
             distance_threshold: Optional threshold for relevance filtering
+            mentioned_projects: Optional list of project names already detected in query
+            mentioned_categories: Optional list of categories already detected in query
             
         Returns:
             List of retrieved documents with metadata and scores
-            
-        Raises:
-            ValueError: If query is empty or invalid
-            Exception: If search fails
         """
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
@@ -244,7 +244,13 @@ class RetrieverManager:
             
             # Detect query intent for weighted strategy optimization
             query_lower = query.lower()
-            query_intent = self._detect_query_intent(query_lower)
+            
+            # Use provided projects/categories or extract if not provided
+            # (Note: Internal extraction still uses some hardcoding, but we prioritize passed values)
+            m_projects = mentioned_projects if mentioned_projects is not None else self._extract_mentioned_items(query_lower, ['projectacme', 'projectfacebook'])
+            m_categories = mentioned_categories if mentioned_categories is not None else self._extract_mentioned_items(query_lower, ['concrete', 'metal', 'stone', 'wood'])
+            
+            query_intent = self._detect_query_intent_with_context(query_lower, m_projects, m_categories)
             
             # Perform similarity search - get more results to apply weighting
             logger.debug(f"Searching for top {top_k * 2} similar documents for re-ranking...")
@@ -258,11 +264,7 @@ class RetrieverManager:
                 logger.info("No documents found matching query")
                 return []
             
-            # Extract project name and categories from query for weighting
-            mentioned_projects = self._extract_mentioned_items(query_lower, ['projectacme', 'projectfacebook'])
-            mentioned_categories = self._extract_mentioned_items(query_lower, ['concrete', 'metal', 'stone', 'wood'])
-            
-            logger.debug(f"Mentioned projects: {mentioned_projects}, categories: {mentioned_categories}")
+            logger.debug(f"Mentioned projects: {m_projects}, categories: {m_categories}")
             logger.debug(f"Query intent: {query_intent.value}")
             
             # Process and format results with weighted scores
@@ -273,31 +275,26 @@ class RetrieverManager:
                 results['metadatas'][0],
                 results['distances'][0]
             )):
-                # Convert distance to similarity score (cosine distance)
-                # ChromaDB returns distances; lower distance = higher similarity
+                # Convert distance to similarity score
                 similarity_score = 1 - distance
                 
-                # Optional: filter by distance threshold
-                if distance_threshold is not None and distance > distance_threshold:
-                    logger.debug(
-                        f"Filtering out document {i}: "
-                        f"distance {distance} > threshold {distance_threshold}"
-                    )
-                    continue
-                
                 # Apply weighted boost based on project and category matches
-                # Weights are adjusted based on detected query intent
                 boosted_score = self._apply_relevance_weights(
                     similarity_score,
                     metadata.get('file_path', ''),
-                    mentioned_projects,
-                    mentioned_categories,
+                    m_projects,
+                    m_categories,
                     query_intent
                 )
                 
+                # Get extra metadata
+                file_project, file_category = self._extract_path_project_and_category(metadata.get('file_path', ''))
+
                 retrieved_docs.append({
                     'content': doc,
                     'file_path': metadata.get('file_path', 'unknown'),
+                    'project_name': file_project,
+                    'category': file_category,
                     'chunk_index': metadata.get('chunk_index', '0'),
                     'score': round(boosted_score, 4),
                     'distance': round(distance, 4),

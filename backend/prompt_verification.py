@@ -151,7 +151,7 @@ class PromptVerifier:
         
         return ' '.join(corrected_words)
     
-    def _normalize_entities(self, text: str) -> str:
+    def _normalize_entities(self, text: str) -> tuple[str, List[str]]:
         """
         Normalize entity names (projects, materials) to match filesystem structure.
         
@@ -159,8 +159,10 @@ class PromptVerifier:
             text: Input text
             
         Returns:
-            Text with normalized entity names
+            Tuple of (normalized_text, list_of_detected_projects)
         """
+        detected_projects = []
+        
         # Sort project names by length (longest first) to handle overlapping matches
         # e.g., "apex industries" should match before "apex"
         sorted_variants = sorted(self.project_names.items(), key=lambda x: len(x[0]), reverse=True)
@@ -170,9 +172,13 @@ class PromptVerifier:
             # Use word boundaries to match complete phrases only
             # This prevents "Apex Industries" from becoming "ApexIndustriesIndustries"
             pattern = re.compile(r'\b' + re.escape(variant) + r'\b', re.IGNORECASE)
-            text = pattern.sub(actual, text)
+            
+            if pattern.search(text):
+                if actual not in detected_projects:
+                    detected_projects.append(actual)
+                text = pattern.sub(actual, text)
         
-        return text
+        return text, detected_projects
     
     def _capitalize_properly(self, text: str) -> str:
         """
@@ -265,7 +271,7 @@ class PromptVerifier:
         query = spell_fixed
         
         # Step 4: Normalize entities (project names, materials)
-        entity_normalized = self._normalize_entities(query)
+        entity_normalized, detected_projects = self._normalize_entities(query)
         if entity_normalized != query:
             changes_made.append('entities_normalized')
             logger.debug(f"Entities normalized: '{query}' -> '{entity_normalized}'")
@@ -290,7 +296,8 @@ class PromptVerifier:
             'original_query': original_query,
             'changes_made': changes_made,
             'is_valid': True,
-            'error': None
+            'error': None,
+            'detected_projects': detected_projects
         }
     
     def add_spelling_correction(self, incorrect: str, correct: str):

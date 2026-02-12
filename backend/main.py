@@ -28,6 +28,7 @@ from scoring import ScoringEngine, RankingEngine
 from metadata_tracker import FileMetadataTracker
 from hybrid_retrieval import HybridRetriever
 from reranking import ReRankingEngine
+from prompt_verification import PromptVerifier
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +65,7 @@ ranking_engine = None
 metadata_tracker = None
 hybrid_retriever = None
 reranking_engine = None
+prompt_verifier = None
 
 
 @asynccontextmanager
@@ -73,10 +75,14 @@ async def lifespan(app: FastAPI):
     Initializes all managers and file watcher on startup.
     """
     global embedding_manager, retriever_manager, llm_manager, file_watcher
-    global content_extractor, chunk_manager, scoring_engine, ranking_engine, metadata_tracker, hybrid_retriever, reranking_engine
+    global content_extractor, chunk_manager, scoring_engine, ranking_engine, metadata_tracker, hybrid_retriever, reranking_engine, prompt_verifier
     
     try:
         logger.info("Initializing backend components...")
+        
+        # Initialize prompt verifier
+        prompt_verifier = PromptVerifier()
+        logger.info("✓ Prompt verifier initialized")
         
         # Initialize content extraction
         content_extractor = ContentExtractor()
@@ -250,14 +256,29 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
     
     # Verify managers are initialized
-    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine]):
+    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine, prompt_verifier]):
         raise HTTPException(status_code=503, detail="Service not fully initialized")
     
     try:
         logger.info(f"Processing query: {request.query[:100]}...")
         
-        # Step 1: Retrieve relevant chunks from vector DB
-        retrieved = retriever_manager.retrieve(query=request.query, top_k=10)
+        # Step 0: Verify and fix the prompt
+        verification_result = prompt_verifier.verify_and_fix(request.query)
+        
+        if not verification_result['is_valid']:
+            raise HTTPException(status_code=400, detail=verification_result['error'])
+        
+        # Use the fixed query for the rest of the pipeline
+        fixed_query = verification_result['fixed_query']
+        
+        # Log if changes were made
+        if verification_result['changes_made']:
+            logger.info(f"Query corrections applied: {', '.join(verification_result['changes_made'])}")
+            logger.info(f"Original: '{verification_result['original_query']}'")
+            logger.info(f"Fixed: '{fixed_query}'")
+        
+        # Step 1: Retrieve relevant chunks from vector DB using FIXED query
+        retrieved = retriever_manager.retrieve(query=fixed_query, top_k=10)
         
         chunks = []
         vector_scores = []
@@ -289,13 +310,13 @@ async def chat(request: ChatRequest):
         reranked = []
         if ranked:
             reranked = reranking_engine.rerank_with_relevance_scoring(
-                query=request.query,
+                query=fixed_query,  # Use fixed query
                 chunks=ranked,
                 top_k=5
             )
             
             # Check if confidence should be reduced based on re-ranking
-            if reranked and reranking_engine.should_confidence_be_reduced(request.query, reranked[0]):
+            if reranked and reranking_engine.should_confidence_be_reduced(fixed_query, reranked[0]):
                 logger.warning("Re-ranking detected weak match, reducing confidence")
                 for chunk in reranked:
                     chunk["scores"]["confidence"] = "low"
@@ -308,9 +329,9 @@ async def chat(request: ChatRequest):
                 web_search_used=False
             )
         
-        # Step 4: Generate answer using LLM
+        # Step 4: Generate answer using LLM with FIXED query
         answer_result = llm_manager.generate_answer(
-            query=request.query,
+            query=fixed_query,  # Use fixed query
             retrieved_chunks=reranked,
             use_web_search=request.use_web_search
         )

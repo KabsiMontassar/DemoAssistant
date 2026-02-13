@@ -8,20 +8,21 @@ services:
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
-      - DATA_PATH=/app/data
+      - DATA_PATH=/app/data/materials
       - CHROMA_PATH=/app/data/chroma_db
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8000
       - TF_ENABLE_ONEDNN_OPTS=0
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./backend/data:/app/data
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 300s
+      start_period: 180s
 
   frontend:
     image: regsistrydemo.azurecr.io/atlas-frontend:latest

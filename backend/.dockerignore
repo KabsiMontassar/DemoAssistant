@@ -25,3 +25,8 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Exclude local data and ChromaDB (will be created fresh in container)
+data/chroma_db/
+data/metadata.json
+*.sqlite3

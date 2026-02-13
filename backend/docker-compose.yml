@@ -22,14 +22,16 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.70'
-          memory: 600M
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 1G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 180s
 
 networks:
   default:

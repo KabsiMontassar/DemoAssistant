@@ -58,12 +58,18 @@ class EmbeddingManager:
         )
         
         # Load embedding model (downloads on first run, ~400MB)
-        logger.info("Loading Sentence Transformer model...")
+        model_name = os.getenv('EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
+        logger.info(f"Loading Sentence Transformer model: {model_name}")
+        logger.info("⏳ First-time download may take 1-2 minutes (~400MB). Please wait...")
+        
+        import time
+        start_time = time.time()
         self.model = SentenceTransformer(
-            os.getenv('EMBEDDING_MODEL', 'all-MiniLM-L6-v2'),
+            model_name,
             device='cpu'  # Use CPU for demo (production could use GPU)
         )
-        logger.info("✓ Embedding model loaded")
+        elapsed = time.time() - start_time
+        logger.info(f"✓ Embedding model loaded successfully in {elapsed:.1f}s")
     
     def _extract_text_from_pdf(self, file_path: Path) -> str:
         """

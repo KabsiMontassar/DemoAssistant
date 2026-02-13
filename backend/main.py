@@ -81,6 +81,13 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("Initializing backend components...")
         
+        # Ensure data directories exist
+        data_path = Path(os.getenv('DATA_PATH', './data/materials'))
+        chroma_path = Path(os.getenv('CHROMA_PATH', './data/chroma_db'))
+        data_path.mkdir(parents=True, exist_ok=True)
+        chroma_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"✓ Data directories verified: {data_path}, {chroma_path}")
+        
         # Initialize prompt verifier
         prompt_verifier = PromptVerifier()
         logger.info("✓ Prompt verifier initialized")
@@ -122,21 +129,32 @@ async def lifespan(app: FastAPI):
         llm_manager = LLMManager()
         logger.info("✓ LLM manager initialized")
         
-        # Initial embedding of existing files
+        # Initial embedding of existing files (non-blocking if no files exist)
         logger.info("Performing initial embedding of existing files...")
-        embedding_manager.embed_directory()
-        logger.info("✓ Initial embedding complete")
+        try:
+            result = embedding_manager.embed_directory()
+            logger.info(f"✓ Initial embedding complete: {result.get('total_files', 0)} files processed")
+        except Exception as embed_error:
+            logger.warning(f"Initial embedding skipped or failed: {str(embed_error)}")
         
         # Initialize file watcher for automatic re-embedding on structure changes
-        base_path = _get_base_path()
-        file_watcher = FileWatcher(
-            watch_path=str(base_path),
-            embedding_manager=embedding_manager,
-            retriever_manager=retriever_manager,
-            metadata_tracker=metadata_tracker
-        )
-        file_watcher.start()
-        logger.info(f"✓ File watcher started on {base_path} - monitoring structure for changes")
+        try:
+            base_path = _get_base_path()
+            if base_path.exists():
+                file_watcher = FileWatcher(
+                    watch_path=str(base_path),
+                    embedding_manager=embedding_manager,
+                    retriever_manager=retriever_manager,
+                    metadata_tracker=metadata_tracker
+                )
+                file_watcher.start()
+                logger.info(f"✓ File watcher started on {base_path} - monitoring structure for changes")
+            else:
+                logger.warning(f"File watcher not started - base path does not exist: {base_path}")
+        except Exception as watcher_error:
+            logger.warning(f"File watcher initialization failed: {str(watcher_error)}")
+        
+        logger.info("✓ Backend startup complete - ready to accept requests")
         
         yield
         

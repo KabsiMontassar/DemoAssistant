@@ -169,26 +169,26 @@ class RetrieverManager:
         
         boosted_score = base_score
         
-        # SET WEIGHTS BASED ON QUERY INTENT
+        # SET WEIGHTS BASED ON QUERY INTENT (REDUCED FOR SCORE CALIBRATION)
         if query_intent == QueryIntent.SPECIFICATION:
             # User asked for specific project + material: maximize exact matches
-            PROJECT_WEIGHT = 3.0
-            CATEGORY_WEIGHT = 3.0
+            PROJECT_WEIGHT = 1.30
+            CATEGORY_WEIGHT = 1.25
             logger.debug(f"Using SPECIFICATION weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         elif query_intent == QueryIntent.COMPARISON:
             # User comparing materials: reduce project emphasis, emphasize categories
-            PROJECT_WEIGHT = 1.2
-            CATEGORY_WEIGHT = 2.0
+            PROJECT_WEIGHT = 1.10
+            CATEGORY_WEIGHT = 1.20
             logger.debug(f"Using COMPARISON weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         elif query_intent == QueryIntent.CATEGORY:
             # User focused on material type: maximize category, minimize project
-            PROJECT_WEIGHT = 1.0
-            CATEGORY_WEIGHT = 3.0
+            PROJECT_WEIGHT = 1.05
+            CATEGORY_WEIGHT = 1.25
             logger.debug(f"Using CATEGORY weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         else:
             # GENERAL: balanced approach
-            PROJECT_WEIGHT = 2.0
-            CATEGORY_WEIGHT = 1.5
+            PROJECT_WEIGHT = 1.15
+            CATEGORY_WEIGHT = 1.10
             logger.debug(f"Using GENERAL weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         
         # Apply project weight if project is mentioned in query AND matches file path
@@ -304,15 +304,11 @@ class RetrieverManager:
             # Sort by boosted score
             retrieved_docs.sort(key=lambda x: x['score'], reverse=True)
             
-            # Normalize scores to 0-1 range based on max score
-            # This ensures the best match(es) get the highest score, others are proportionally lower
+            # Keep absolute scores (no max-normalization) to preserve score variance
+            # This allows threshold filtering to work correctly
+            # Scores now range naturally from ~0.1 (weak match) to ~1.0 (perfect match)
             if retrieved_docs:
-                max_score = max(doc['score'] for doc in retrieved_docs)
-                if max_score > 0:
-                    for doc in retrieved_docs:
-                        normalized_score = doc['score'] / max_score
-                        doc['score'] = round(normalized_score, 4)
-                        logger.debug(f"Normalized score for {doc['file_path']}: {normalized_score}")
+                logger.debug(f"Score range: {min(d['score'] for d in retrieved_docs):.3f} - {max(d['score'] for d in retrieved_docs):.3f}")
             
             # Return top_k results
             retrieved_docs = retrieved_docs[:top_k]

@@ -162,19 +162,53 @@ class HybridRetriever:
         total_weight = self.vector_weight + self.keyword_weight
         return (self.vector_weight * v_score + self.keyword_weight * k_score) / total_weight
     
+    def reciprocal_rank_fusion(self,
+                              vector_ranks: List[int],
+                              keyword_ranks: List[int],
+                              k: int = 60) -> List[float]:
+        """
+        Combine rankings using Reciprocal Rank Fusion (RRF).
+        RRF is more robust than score combination as it's rank-based.
+        
+        Formula: RRF_score = sum(1 / (k + rank_i)) for each ranking system
+        
+        Args:
+            vector_ranks: Rank positions from vector search (0-indexed)
+            keyword_ranks: Rank positions from keyword search (0-indexed)
+            k: Constant for RRF (default 60, standard value)
+            
+        Returns:
+            List of RRF scores
+        """
+        num_items = len(vector_ranks)
+        rrf_scores = []
+        
+        for i in range(num_items):
+            # RRF score combines ranks from both systems
+            vector_contribution = 1.0 / (k + vector_ranks[i] + 1) if vector_ranks[i] >= 0 else 0
+            keyword_contribution = 1.0 / (k + keyword_ranks[i] + 1) if keyword_ranks[i] >= 0 else 0
+            
+            rrf_score = vector_contribution + keyword_contribution
+            rrf_scores.append(rrf_score)
+        
+        return rrf_scores
+    
     def retrieve(self,
                 query: str,
                 chunks: List[Dict[str, Any]],
                 vector_scores: List[float],
-                top_k: int = 5) -> List[Dict[str, Any]]:
+                top_k: int = 5,
+                use_rrf: bool = True) -> List[Dict[str, Any]]:
         """
         Perform hybrid retrieval combining semantic and keyword search.
+        Uses Reciprocal Rank Fusion (RRF) for robust score combination.
         
         Args:
             query: Search query
             chunks: List of chunks
             vector_scores: Vector similarity scores for each chunk
             top_k: Return top K results
+            use_rrf: Use RRF instead of weighted scores (recommended)
             
         Returns:
             Top K chunks with combined scores
@@ -182,32 +216,54 @@ class HybridRetriever:
         if not self._trained:
             self.train(chunks)
         
-        # Get BM25 scores
+        # Get BM25 keyword scores
         texts = [chunk.get("text", "") for chunk in chunks]
+        bm25_results = self.bm25.rank(query, texts)
+        
+        # Create score and rank mappings
         bm25_scores = [0.0] * len(chunks)
+        keyword_ranks = [-1] * len(chunks)  # -1 means not found
         
-        ranked = self.bm25.rank(query, texts)
-        for idx, score in ranked:
+        for rank, (idx, score) in enumerate(bm25_results):
             bm25_scores[idx] = score
+            keyword_ranks[idx] = rank
         
-        # Combine scores
+        # Create vector ranks (already sorted by score)
+        vector_ranks = list(range(len(chunks)))
+        
+        # Combine using RRF (preferred) or weighted scores
         combined_results = []
-        for i, chunk in enumerate(chunks):
-            combined_score = self.hybrid_score(
-                vector_scores[i],
-                bm25_scores[i],
-                normalize_keyword=True
-            )
+        
+        if use_rrf:
+            # Use Reciprocal Rank Fusion
+            rrf_scores = self.reciprocal_rank_fusion(vector_ranks, keyword_ranks)
             
-            result = chunk.copy()
-            result["hybrid_score"] = combined_score
-            result["vector_score"] = vector_scores[i]
-            result["keyword_score"] = bm25_scores[i]
-            combined_results.append(result)
+            for i, chunk in enumerate(chunks):
+                result = chunk.copy()
+                result["hybrid_score"] = rrf_scores[i]
+                result["vector_score"] = vector_scores[i]
+                result["keyword_score"] = bm25_scores[i]
+                result["fusion_method"] = "rrf"
+                combined_results.append(result)
+        else:
+            # Use weighted score combination
+            for i, chunk in enumerate(chunks):
+                combined_score = self.hybrid_score(
+                    vector_scores[i],
+                    bm25_scores[i],
+                    normalize_keyword=True
+                )
+                
+                result = chunk.copy()
+                result["hybrid_score"] = combined_score
+                result["vector_score"] = vector_scores[i]
+                result["keyword_score"] = bm25_scores[i]
+                result["fusion_method"] = "weighted"
+                combined_results.append(result)
         
         # Sort by combined score
         combined_results.sort(key=lambda x: x["hybrid_score"], reverse=True)
         
-        logger.debug(f"Hybrid search returned {len(combined_results[:top_k])} results for query: {query}")
+        logger.debug(f"Hybrid search (RRF={use_rrf}) returned {len(combined_results[:top_k])} results for query: {query[:50]}")
         
         return combined_results[:top_k]

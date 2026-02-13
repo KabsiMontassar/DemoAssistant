@@ -29,7 +29,9 @@ from scoring import ScoringEngine, RankingEngine
 from metadata_tracker import FileMetadataTracker
 from hybrid_retrieval import HybridRetriever
 from reranking import ReRankingEngine
-from prompt_verification import PromptVerifier
+from intent_classifier import IntentClassifier
+from chitchat_handler import ChitchatHandler
+from query_preprocessor import QueryPreprocessor
 
 # Configure logging
 logging.basicConfig(
@@ -66,7 +68,9 @@ ranking_engine = None
 metadata_tracker = None
 hybrid_retriever = None
 reranking_engine = None
-prompt_verifier = None
+intent_classifier = None
+chitchat_handler = None
+query_preprocessor = None
 
 
 @asynccontextmanager
@@ -76,14 +80,15 @@ async def lifespan(app: FastAPI):
     Initializes all managers and file watcher on startup.
     """
     global embedding_manager, retriever_manager, llm_manager, file_watcher
-    global content_extractor, chunk_manager, scoring_engine, ranking_engine, metadata_tracker, hybrid_retriever, reranking_engine, prompt_verifier
+    global content_extractor, chunk_manager, scoring_engine, ranking_engine, metadata_tracker
+    global hybrid_retriever, reranking_engine, intent_classifier, chitchat_handler, query_preprocessor
     
     try:
         logger.info("Initializing backend components...")
         
-        # Initialize prompt verifier
-        prompt_verifier = PromptVerifier()
-        logger.info("✓ Prompt verifier initialized")
+        # Initialize query preprocessor (no dependencies)
+        query_preprocessor = QueryPreprocessor()
+        logger.info("✓ Query preprocessor initialized")
         
         # Initialize content extraction
         content_extractor = ContentExtractor()
@@ -121,6 +126,14 @@ async def lifespan(app: FastAPI):
         # Initialize LLM manager
         llm_manager = LLMManager()
         logger.info("✓ LLM manager initialized")
+        
+        # Initialize intent classifier (requires embedding manager)
+        intent_classifier = IntentClassifier(embedding_manager)
+        logger.info("✓ Intent classifier initialized")
+        
+        # Initialize chitchat handler (requires LLM manager)
+        chitchat_handler = ChitchatHandler(llm_manager)
+        logger.info("✓ Chitchat handler initialized")
         
         # Initial embedding of existing files
         logger.info("Performing initial embedding of existing files...")
@@ -237,9 +250,15 @@ async def health_check():
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
-    Main chat endpoint for material pricing queries.
-    Uses full pipeline: verification -> retrieval -> scoring -> ranking -> answer generation.
-    Returns a stream of status updates and the final result.
+    Main chat endpoint with intelligence layer.
+    Pipeline: Intent Classification → Query Preprocessing → Hybrid Retrieval → Score Gate → Answer Generation
+    
+    New features:
+    - Intent classification with confidence scoring
+    - Chitchat handling without retrieval
+    - Query preprocessing with fuzzy matching
+    - Hybrid retrieval (vector + BM25 with RRF)
+    - Multi-tier score gate (reject <20% confidence)
     """
     # Validate request
     if not request.query or len(request.query.strip()) == 0:
@@ -249,130 +268,196 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
     
     # Verify managers are initialized
-    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine, prompt_verifier]):
+    required_managers = [
+        embedding_manager, retriever_manager, llm_manager, ranking_engine, 
+        reranking_engine, intent_classifier, chitchat_handler, query_preprocessor
+    ]
+    if not all(required_managers):
         raise HTTPException(status_code=503, detail="Service not fully initialized")
+    
+    # Multi-tier confidence thresholds
+    CONFIDENCE_THRESHOLDS = {
+        "high": 0.70,       # Very confident - full answer
+        "medium": 0.40,     # Moderate - answer with caveat
+        "low": 0.20,        # Weak - minimal answer + suggestion
+        "reject": 0.20      # Below this - reject
+    }
 
     async def event_generator():
         try:
             logger.info(f"Processing query: {request.query[:100]}...")
             
-            # Step 0: Verify and fix prompt
-            yield json.dumps({"type": "status", "stage": "verification", "message": "Verifying and cleaning prompt..."}) + "\n"
-            await asyncio.sleep(0.1) # Tiny yield to ensure frontend receives it
+            # STEP 0: INTENT CLASSIFICATION
+            yield json.dumps({"type": "status", "stage": "intent", "message": "Analyzing query intent..."}) + "\n"
+            await asyncio.sleep(0.1)
             
-            verification_result = prompt_verifier.verify_and_fix(request.query)
+            intent_result = intent_classifier.classify_query(request.query)
+            logger.info(f"Intent: {intent_result['intent']} (confidence: {intent_result['confidence']}%)")
             
-            if not verification_result['is_valid']:
-                error_msg = verification_result['error']
-                yield json.dumps({"type": "error", "message": error_msg}) + "\n"
-                return
-
-            fixed_query = verification_result['fixed_query']
-            detected_projects = verification_result.get('detected_projects', [])
-            is_domain_relevant = verification_result.get('is_domain_relevant', True)
-            
-            # Check if query is about the material/project domain
-            if not is_domain_relevant:
-                response_data = {
-                    "response": "I'm specialized in answering questions about material pricing and project information in this database. Feel free to ask me about:\n\n• Material prices (concrete, wood, metal, stone)\n• Project details and specifications\n• Supplier information\n• Material availability and lead times\n• Comparisons between different materials\n\nHow can I help you with your project or material needs?",
-                    "sources": [],
-                    "web_search_used": False
-                }
-                yield json.dumps({"type": "result", "data": response_data}) + "\n"
-                return
-            
-            if verification_result['changes_made']:
-                changes = ", ".join(verification_result['changes_made'])
+            # ROUTE 1: Chitchat Handler (No Retrieval)
+            if intent_result["routing"] == "chitchat_handler":
                 yield json.dumps({
                     "type": "status", 
-                    "stage": "verification_complete", 
-                    "message": f"Fixed prompt: {fixed_query}",
-                    "details": changes
+                    "stage": "chitchat", 
+                    "message": f"Handling as conversation (confidence: {intent_result['confidence']:.1f}%)"
                 }) + "\n"
-                logger.info(f"Fixed: '{fixed_query}'")
-
-            # Step 1: Retrieval
+                
+                chitchat_response = chitchat_handler.handle_chitchat(request.query, intent_result)
+                
+                final_response = {
+                    "response": chitchat_response["response"],
+                    "sources": [],
+                    "web_search_used": False,
+                    "intent": "chitchat",
+                    "confidence": chitchat_response["confidence"]
+                }
+                yield json.dumps({"type": "result", "data": final_response}) + "\n"
+                return
+            
+            # ROUTE 2: RAG Pipeline (Domain Query)
+            
+            # STEP 1: QUERY PREPROCESSING
+            yield json.dumps({"type": "status", "stage": "preprocessing", "message": "Preprocessing query..."}) + "\n"
+            
+            preprocessed = query_preprocessor.preprocess(request.query)
+            corrected_query = preprocessed["corrected_query"]
+            entities = preprocessed["entities"]
+            
+            if preprocessed["corrections_made"]:
+                logger.info(f"Query corrections: {preprocessed['corrections_made']}")
+                yield json.dumps({
+                    "type": "status",
+                    "stage": "preprocessing_complete",
+                    "message": f"Applied corrections: {', '.join(preprocessed['corrections_made'][:3])}"
+                }) + "\n"
+            
+            # STEP 2: VECTOR RETRIEVAL
             yield json.dumps({"type": "status", "stage": "retrieval", "message": "Searching knowledge base..."}) + "\n"
             
-            # Extract material categories from prompt_verifier if available
-            detected_categories = [c for c in prompt_verifier.material_categories if c in fixed_query.lower()]
-            
             retrieved = retriever_manager.retrieve(
-                query=fixed_query, 
-                top_k=10,
-                mentioned_projects=detected_projects,
-                mentioned_categories=detected_categories
+                query=corrected_query,
+                top_k=20,  # Get more for hybrid fusion
+                mentioned_projects=entities["projects"],
+                mentioned_categories=entities["materials"]
             )
+            
+            if not retrieved:
+                # No results from vector search
+                if request.use_web_search:
+                    yield json.dumps({"type": "status", "stage": "web_search", "message": "No local results, searching web..."}) + "\n"
+                else:
+                    response_data = {
+                        "response": "I couldn't find any relevant information in the database. Try enabling web search or rephrasing your query.",
+                        "sources": [],
+                        "web_search_used": False
+                    }
+                    yield json.dumps({"type": "result", "data": response_data}) + "\n"
+                    return
+            
+            # STEP 3: HYBRID RETRIEVAL (Vector + BM25 with RRF)
+            yield json.dumps({"type": "status", "stage": "hybrid", "message": "Combining semantic and keyword matching..."}) + "\n"
             
             chunks = []
             vector_scores = []
             
-            if retrieved:
-                for r in retrieved:
-                    chunks.append({
-                        "text": r.get("content", ""),
-                        "metadata": {
-                            "file_path": r.get("file_path", "unknown"),
-                            "project_name": r.get("project_name", "unknown"), # Ensure project_name is passed
-                            "chunk_index": r.get("chunk_index", 0),
-                            "semantic_type": "general"
-                        }
-                    })
-                    vector_scores.append(r.get("score", 0))
-
-            # Step 2: Ranking
-            yield json.dumps({"type": "status", "stage": "ranking", "message": f"Analyzing {len(chunks)} documents..."}) + "\n"
+            for r in retrieved:
+                chunks.append({
+                    "text": r.get("content", ""),
+                    "metadata": {
+                        "file_path": r.get("file_path", "unknown"),
+                        "project_name": r.get("project_name", "unknown"),
+                        "chunk_index": r.get("chunk_index", 0),
+                        "semantic_type": "general"
+                    }
+                })
+                vector_scores.append(r.get("score", 0))
             
-            ranked = []
-            if chunks:
-                # Pass the first detected project for primary scoring boost
-                primary_project = detected_projects[0] if detected_projects else None
-                ranked = ranking_engine.rank_results(
-                    chunks=chunks,
-                    vector_scores=vector_scores,
-                    query_project=primary_project,
-                    top_k=10,
-                    min_confidence="low"
-                )
-
-            # Step 3: Re-ranking
+            # Apply hybrid retrieval with RRF
+            hybrid_results = hybrid_retriever.retrieve(
+                query=corrected_query,
+                chunks=chunks,
+                vector_scores=vector_scores,
+                top_k=10,
+                use_rrf=True
+            )
+            
+            # Update chunks with hybrid scores
+            for i, chunk in enumerate(chunks[:len(hybrid_results)]):
+                chunk["hybrid_score"] = hybrid_results[i]["hybrid_score"]
+            
+            # STEP 4: RANKING
+            yield json.dumps({"type": "status", "stage": "ranking", "message": f"Ranking {len(hybrid_results)} results..."}) + "\n"
+            
+            # Use hybrid scores instead of pure vector scores
+            hybrid_chunk_data = []
+            hybrid_scores_list = []
+            
+            for hr in hybrid_results:
+                hybrid_chunk_data.append(hr)
+                hybrid_scores_list.append(hr.get("hybrid_score", 0))
+            
+            ranked = ranking_engine.rank_results(
+                chunks=hybrid_chunk_data,
+                vector_scores=hybrid_scores_list,
+                query_project=entities["projects"][0] if entities["projects"] else None,
+                top_k=10,
+                min_confidence="low"
+            )
+            
+            # STEP 5: RE-RANKING
             yield json.dumps({"type": "status", "stage": "reranking", "message": "Refining results for relevance..."}) + "\n"
             
-            reranked = []
-            if ranked:
-                # Update reranking to handle project filtering
-                reranked = reranking_engine.rerank_with_relevance_scoring(
-                    query=fixed_query,
-                    chunks=ranked,
-                    target_projects=detected_projects,
-                    top_k=5
-                )
+            reranked = reranking_engine.rerank_with_relevance_scoring(
+                query=corrected_query,
+                chunks=ranked,
+                top_k=5
+            )
+            
+            # STEP 6: SCORE GATE (Multi-tier thresholds)
+            if reranked:
+                top_score = reranked[0].get("scores", {}).get("overall_score", 0)
                 
-                if reranked and reranking_engine.should_confidence_be_reduced(fixed_query, reranked[0]):
-                    logger.warning("Re-ranking detected weak match, reducing confidence")
-                    for chunk in reranked:
-                        chunk["scores"]["confidence"] = "low"
-
-            # Guard check
-            if not reranked and not request.use_web_search:
+                if top_score < CONFIDENCE_THRESHOLDS["reject"]:
+                    # Reject: Score too low
+                    logger.warning(f"Rejected: Top score {top_score:.2f} below threshold {CONFIDENCE_THRESHOLDS['reject']}")
+                    response_data = {
+                        "response": f"I found some results, but their relevance is very low (confidence: {top_score*100:.1f}%). Please try:\n\n• Being more specific about the project or material\n• Checking spelling\n• Enabling web search for broader results",
+                        "sources": [],
+                        "web_search_used": False,
+                        "confidence": "very_low"
+                    }
+                    yield json.dumps({"type": "result", "data": response_data}) + "\n"
+                    return
+                
+                # Determine confidence level
+                if top_score >= CONFIDENCE_THRESHOLDS["high"]:
+                    confidence_level = "high"
+                elif top_score >= CONFIDENCE_THRESHOLDS["medium"]:
+                    confidence_level = "medium"
+                else:
+                    confidence_level = "low"
+                
+                logger.info(f"Score gate passed: top_score={top_score:.2f}, confidence={confidence_level}")
+            else:
+                # No results after reranking
                 response_data = {
-                    "response": "I couldn't find any specific information matching your query in the Atlas database. Please try broadening your search or enabling web search for current market data.",
+                    "response": "I couldn't find relevant information matching your query. Try rephrasing or enabling web search.",
                     "sources": [],
                     "web_search_used": False
                 }
                 yield json.dumps({"type": "result", "data": response_data}) + "\n"
                 return
-
-            # Step 4: Generation
-            yield json.dumps({"type": "status", "stage": "generation", "message": "Synthesizing final answer..."}) + "\n"
+            
+            # STEP 7: ANSWER GENERATION
+            yield json.dumps({"type": "status", "stage": "generation", "message": "Generating answer..."}) + "\n"
             
             answer_result = llm_manager.generate_answer(
-                query=fixed_query,
+                query=corrected_query,
                 retrieved_chunks=reranked,
                 use_web_search=request.use_web_search
             )
-
-            # Format chunks for response (similar to original code)
+            
+            # Format sources
             unique_sources = {}
             for chunk in ranking_engine.format_batch(reranked):
                 fpath = chunk["source"]["file_path"].replace('\\', '/')
@@ -387,6 +472,7 @@ async def chat(request: ChatRequest):
             
             sources = list(unique_sources.values())
             
+            # Add web sources
             if "web_sources" in answer_result:
                 for ws in answer_result["web_sources"]:
                     sources.append(
@@ -396,16 +482,21 @@ async def chat(request: ChatRequest):
                             relevance_score=0.95
                         )
                     )
-
-            # Filter negative responses
-            negative_keywords = ["don't have that information", "couldn't find any specific information", "information not found"]
-            if any(keyword in answer_result["answer"].lower() for keyword in negative_keywords):
-                sources = []
-
+            
+            # Add confidence caveat for medium/low confidence
+            response_text = answer_result["answer"]
+            if confidence_level == "medium":
+                response_text = f"**Note**: Moderate confidence match.\n\n{response_text}"
+            elif confidence_level == "low":
+                response_text = f"**Note**: Low confidence match. Results may not be fully relevant.\n\n{response_text}"
+            
             final_response = {
-                "response": answer_result["answer"],
-                "sources": [s.model_dump() for s in sources], # Convert Pydantic models to dict
-                "web_search_used": answer_result["web_search_used"]
+                "response": response_text,
+                "sources": [s.model_dump() for s in sources],
+                "web_search_used": answer_result["web_search_used"],
+                "confidence": confidence_level,
+                "intent": "domain",
+                "score": float(top_score)
             }
             
             yield json.dumps({"type": "result", "data": final_response}) + "\n"

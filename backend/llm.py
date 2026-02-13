@@ -1,5 +1,6 @@
 """
-Calls OpenRouter API with Nemotron model
+"""
+Calls Mistral AI API directly
 Constructs system prompt defining behavior
 Includes retrieved context in prompt
 Optional: Adds web search results from Tavily
@@ -18,21 +19,21 @@ logger = logging.getLogger(__name__)
 
 class LLMManager:
     """
-    Manages interactions with OpenRouter API.
+    Manages interactions with Mistral AI API.
     Handles prompt construction, response generation, and web search integration.
     """
     
-    # OpenRouter API endpoint
-    API_BASE = "https://openrouter.ai/api/v1"
+    # Mistral API endpoint
+    API_BASE = "https://api.mistral.ai/v1"
     
     # Model configuration
-    DEFAULT_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free"
+    DEFAULT_MODEL = "mistral-medium"
     
     def __init__(self):
         """Initialize LLM manager with API credentials and configuration."""
-        self.api_key = os.getenv('OPENROUTER_API_KEY')
+        self.api_key = os.getenv('MISTRAL_API_KEY')
         if not self.api_key: 
-            raise ValueError("OPENROUTER_API_KEY environment variable not set")
+            raise ValueError("MISTRAL_API_KEY environment variable not set")
         
         self.model = os.getenv('LLM_MODEL', self.DEFAULT_MODEL)
         self.temperature = float(os.getenv('LLM_TEMPERATURE', '0.7'))
@@ -46,7 +47,7 @@ class LLMManager:
         # HTTP client with timeout
         self.client = httpx.Client(timeout=30.0)
         
-        logger.info(f"LLM Manager initialized with OpenRouter model: {self.model}")
+        logger.info(f"LLM Manager initialized with Mistral AI model: {self.model}")
         if self.tavily_client:
             logger.info("Web search enabled via Tavily API")
     
@@ -252,14 +253,12 @@ Provide a factual answer based ONLY on the context blocks above. Prioritize Proj
             user_prompt = self._construct_user_prompt(query, context, web_context)
             
             actual_search_used = bool(web_context)
-            logger.info(f"Calling OpenRouter API (Search context present: {actual_search_used})...")
+            logger.info(f"Calling Mistral AI API (Search context present: {actual_search_used})...")
             
             # Prepare API request
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Material Pricing AI Assistant"
+                "Content-Type": "application/json"
             }
             
             payload = {
@@ -289,14 +288,14 @@ Provide a factual answer based ONLY on the context blocks above. Prioritize Proj
             # Handle API errors
             if response.status_code != 200:
                 error_detail = response.text
-                logger.error(f"OpenRouter API error ({response.status_code}): {error_detail}")
+                logger.error(f"Mistral AI API error ({response.status_code}): {error_detail}")
                 
                 if response.status_code == 401:
-                    raise Exception("Invalid OpenRouter API key. Check OPENROUTER_API_KEY.")
+                    raise Exception("Invalid Mistral API key. Check MISTRAL_API_KEY.")
                 elif response.status_code == 429:
                     raise Exception("Rate limit exceeded. Please try again later.")
                 elif response.status_code == 500:
-                    raise Exception("OpenRouter API server error. Please try again.")
+                    raise Exception("Mistral AI API server error. Please try again.")
                 else:
                     raise Exception(f"API error: {error_detail}")
             

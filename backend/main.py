@@ -30,6 +30,12 @@ from metadata_tracker import FileMetadataTracker
 from hybrid_retrieval import HybridRetriever
 from reranking import ReRankingEngine
 from prompt_verification import PromptVerifier
+from intent_classifier import IntentClassifier
+from chitchat_handler import ChitchatHandler
+from cross_encoder_reranker import CrossEncoderReranker
+from pii_redactor import PIIRedactor
+from config import get_config, RAGConfig
+from performance_monitor import get_monitor, Timer
 
 # Configure logging
 logging.basicConfig(
@@ -49,7 +55,7 @@ if not os.getenv('CHROMA_PATH'):
     os.environ['CHROMA_PATH'] = './data/chroma_db'
 
 # Validate required environment variables
-REQUIRED_ENV_VARS = ['OPENROUTER_API_KEY']
+REQUIRED_ENV_VARS = ['MISTRAL_API_KEY']
 missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
 if missing_vars:
     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
@@ -67,6 +73,12 @@ metadata_tracker = None
 hybrid_retriever = None
 reranking_engine = None
 prompt_verifier = None
+intent_classifier = None
+chitchat_handler = None
+cross_encoder = None
+pii_redactor = None
+config = None
+performance_monitor = None
 
 
 @asynccontextmanager
@@ -77,9 +89,22 @@ async def lifespan(app: FastAPI):
     """
     global embedding_manager, retriever_manager, llm_manager, file_watcher
     global content_extractor, chunk_manager, scoring_engine, ranking_engine, metadata_tracker, hybrid_retriever, reranking_engine, prompt_verifier
+    global intent_classifier, chitchat_handler, cross_encoder, pii_redactor, config, performance_monitor
     
     try:
         logger.info("Initializing backend components...")
+        
+        # Initialize configuration
+        config = get_config()
+        logger.info("✓ Configuration loaded")
+        logger.info(f"  - Intent threshold: {config.intent.confidence_threshold * 100}%")
+        logger.info(f"  - Score gate threshold: {config.score_gate.relevance_threshold * 100}%")
+        logger.info(f"  - CrossEncoder enabled: {config.reranking.use_cross_encoder}")
+        logger.info(f"  - PII redaction enabled: {config.pii.enabled}")
+        
+        # Initialize performance monitor
+        performance_monitor = get_monitor()
+        logger.info("✓ Performance monitor initialized")
         
         # Initialize prompt verifier
         prompt_verifier = PromptVerifier()
@@ -114,9 +139,44 @@ async def lifespan(app: FastAPI):
         retriever_manager = RetrieverManager(embedding_manager)
         logger.info("✓ Retriever manager initialized")
         
-        # Initialize hybrid retriever
-        hybrid_retriever = HybridRetriever(vector_weight=0.6, keyword_weight=0.4)
-        logger.info("✓ Hybrid retriever initialized")
+        # Initialize hybrid retriever with RRF
+        hybrid_retriever = HybridRetriever(
+            vector_weight=config.hybrid.vector_weight,
+            keyword_weight=config.hybrid.keyword_weight,
+            use_rrf=True
+        )
+        logger.info("✓ Hybrid retriever initialized (RRF enabled)")
+        
+        # Initialize intent classifier (reuses embedding manager)
+        intent_classifier = IntentClassifier(embedding_manager)
+        logger.info("✓ Intent classifier initialized")
+        
+        # Initialize chitchat handler
+        chitchat_handler = ChitchatHandler()
+        logger.info("✓ Chitchat handler initialized")
+        
+        # Initialize CrossEncoder reranker (lazy loaded)
+        if config.reranking.use_cross_encoder:
+            cross_encoder = CrossEncoderReranker(
+                model_name=config.reranking.cross_encoder_model,
+                batch_size=config.reranking.cross_encoder_batch_size
+            )
+            logger.info("✓ CrossEncoder reranker initialized (lazy loading)")
+        else:
+            logger.info("⚠ CrossEncoder disabled in configuration")
+        
+        # Initialize PII redactor (lazy loaded)
+        if config.pii.enabled and PIIRedactor.is_available():
+            pii_redactor = PIIRedactor(
+                model_name=config.pii.spacy_model,
+                redact_entities=config.pii.redact_entities,
+                redaction_text=config.pii.redaction_text
+            )
+            logger.info("✓ PII redactor initialized (lazy loading)")
+        elif config.pii.enabled:
+            logger.warning("⚠ PII redaction enabled but spaCy not available")
+        else:
+            logger.info("⚠ PII redaction disabled in configuration")
         
         # Initialize LLM manager
         llm_manager = LLMManager()
@@ -224,9 +284,17 @@ async def health_check():
         "retriever_manager": "operational" if retriever_manager else "error",
         "llm_manager": "operational" if llm_manager else "error",
         "file_watcher": "operational" if file_watcher and file_watcher.is_alive() else "error",
+        "intent_classifier": "operational" if intent_classifier else "error",
+        "chitchat_handler": "operational" if chitchat_handler else "error",
+        "hybrid_retriever": "operational" if hybrid_retriever else "error",
+        "cross_encoder": "operational" if cross_encoder else "disabled",
+        "pii_redactor": "operational" if pii_redactor else "disabled",
+        "performance_monitor": "operational" if performance_monitor else "error",
     }
     
-    all_operational = all(v == "operational" for v in components.values())
+    all_operational = all(
+        v in ("operational", "disabled") for v in components.values()
+    )
     
     return HealthResponse(
         status="healthy" if all_operational else "degraded",
@@ -249,10 +317,14 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
     
     # Verify managers are initialized
-    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine, prompt_verifier]):
+    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine, prompt_verifier, intent_classifier, chitchat_handler, hybrid_retriever, performance_monitor]):
         raise HTTPException(status_code=503, detail="Service not fully initialized")
 
     async def event_generator():
+        # Record request
+        performance_monitor.record_request()
+        pipeline_start = time.time()
+        
         try:
             logger.info(f"Processing query: {request.query[:100]}...")
             
@@ -260,7 +332,8 @@ async def chat(request: ChatRequest):
             yield json.dumps({"type": "status", "stage": "verification", "message": "Verifying and cleaning prompt..."}) + "\n"
             await asyncio.sleep(0.1) # Tiny yield to ensure frontend receives it
             
-            verification_result = prompt_verifier.verify_and_fix(request.query)
+            with Timer(performance_monitor, "prompt_verification"):
+                verification_result = prompt_verifier.verify_and_fix(request.query)
             
             if not verification_result['is_valid']:
                 error_msg = verification_result['error']
@@ -270,16 +343,6 @@ async def chat(request: ChatRequest):
             fixed_query = verification_result['fixed_query']
             detected_projects = verification_result.get('detected_projects', [])
             is_domain_relevant = verification_result.get('is_domain_relevant', True)
-            
-            # Check if query is about the material/project domain
-            if not is_domain_relevant:
-                response_data = {
-                    "response": "I'm specialized in answering questions about material pricing and project information in this database. Feel free to ask me about:\n\n• Material prices (concrete, wood, metal, stone)\n• Project details and specifications\n• Supplier information\n• Material availability and lead times\n• Comparisons between different materials\n\nHow can I help you with your project or material needs?",
-                    "sources": [],
-                    "web_search_used": False
-                }
-                yield json.dumps({"type": "result", "data": response_data}) + "\n"
-                return
             
             if verification_result['changes_made']:
                 changes = ", ".join(verification_result['changes_made'])
@@ -291,18 +354,46 @@ async def chat(request: ChatRequest):
                 }) + "\n"
                 logger.info(f"Fixed: '{fixed_query}'")
 
-            # Step 1: Retrieval
-            yield json.dumps({"type": "status", "stage": "retrieval", "message": "Searching knowledge base..."}) + "\n"
+            # Step 0.5: Intent Classification (NEW)
+            yield json.dumps({"type": "status", "stage": "intent_classification", "message": "Analyzing query intent..."}) + "\n"
+            await asyncio.sleep(0.1)
+            
+            with Timer(performance_monitor, "intent_classification"):
+                intent_result = intent_classifier.classify_query(fixed_query)
+            
+            intent = intent_result['intent']
+            confidence = intent_result['confidence']
+            requires_retrieval = intent_result['requires_retrieval']
+            
+            logger.info(f"Intent: {intent} | Confidence: {confidence}% | Requires retrieval: {requires_retrieval}")
+            
+            # Route to chitchat handler if confidence < 30%
+            if not requires_retrieval:
+                logger.info(f"Routing to chitchat handler (confidence: {confidence}%)")
+                yield json.dumps({
+                    "type": "status", 
+                    "stage": "intent_routing", 
+                    "message": f"Query classified as {intent} (confidence: {confidence}%)"
+                }) + "\n"
+                
+                chitchat_result = chitchat_handler.handle_query(fixed_query, confidence)
+                yield json.dumps({"type": "result", "data": chitchat_result}) + "\n"
+                return
+
+            # Step 1: Hybrid Retrieval (UPDATED - Now uses BM25 + Vector)
+            yield json.dumps({"type": "status", "stage": "retrieval", "message": "Searching knowledge base (hybrid: vector + keyword)..."}) + "\n"
             
             # Extract material categories from prompt_verifier if available
             detected_categories = [c for c in prompt_verifier.material_categories if c in fixed_query.lower()]
             
-            retrieved = retriever_manager.retrieve(
-                query=fixed_query, 
-                top_k=10,
-                mentioned_projects=detected_projects,
-                mentioned_categories=detected_categories
-            )
+            # Get initial vector results (more than needed for hybrid fusion)
+            with Timer(performance_monitor, "vector_retrieval", {"top_k": 20}):
+                retrieved = retriever_manager.retrieve(
+                    query=fixed_query, 
+                    top_k=20,  # Get more for hybrid fusion
+                    mentioned_projects=detected_projects,
+                    mentioned_categories=detected_categories
+                )
             
             chunks = []
             vector_scores = []
@@ -313,12 +404,27 @@ async def chat(request: ChatRequest):
                         "text": r.get("content", ""),
                         "metadata": {
                             "file_path": r.get("file_path", "unknown"),
-                            "project_name": r.get("project_name", "unknown"), # Ensure project_name is passed
+                            "project_name": r.get("project_name", "unknown"),
                             "chunk_index": r.get("chunk_index", 0),
                             "semantic_type": "general"
                         }
                     })
                     vector_scores.append(r.get("score", 0))
+            
+            # Apply hybrid retrieval (combines vector + BM25 with RRF)
+            if chunks and hybrid_retriever:
+                logger.info(f"Applying hybrid retrieval fusion on {len(chunks)} initial results")
+                with Timer(performance_monitor, "hybrid_fusion", {"method": "RRF"}):
+                    hybrid_results = hybrid_retriever.retrieve(
+                        query=fixed_query,
+                        chunks=chunks,
+                        vector_scores=vector_scores,
+                        top_k=10
+                    )
+                # Update chunks and scores with hybrid results
+                chunks = hybrid_results
+                vector_scores = [c.get("hybrid_score", c.get("vector_score", 0)) for c in chunks]
+                logger.info(f"Hybrid retrieval returned {len(chunks)} results")
 
             # Step 2: Ranking
             yield json.dumps({"type": "status", "stage": "ranking", "message": f"Analyzing {len(chunks)} documents..."}) + "\n"
@@ -327,50 +433,133 @@ async def chat(request: ChatRequest):
             if chunks:
                 # Pass the first detected project for primary scoring boost
                 primary_project = detected_projects[0] if detected_projects else None
-                ranked = ranking_engine.rank_results(
-                    chunks=chunks,
-                    vector_scores=vector_scores,
-                    query_project=primary_project,
-                    top_k=10,
-                    min_confidence="low"
-                )
+                with Timer(performance_monitor, "ranking", {"chunks": len(chunks)}):
+                    ranked = ranking_engine.rank_results(
+                        chunks=chunks,
+                        vector_scores=vector_scores,
+                        query_project=primary_project,
+                        top_k=10,
+                        min_confidence="low"
+                    )
 
-            # Step 3: Re-ranking
+            # Step 3: Query Similarity Re-ranking
             yield json.dumps({"type": "status", "stage": "reranking", "message": "Refining results for relevance..."}) + "\n"
             
             reranked = []
             if ranked:
                 # Update reranking to handle project filtering
-                reranked = reranking_engine.rerank_with_relevance_scoring(
-                    query=fixed_query,
-                    chunks=ranked,
-                    target_projects=detected_projects,
-                    top_k=5
-                )
+                with Timer(performance_monitor, "query_reranking", {"chunks": len(ranked)}):
+                    reranked = reranking_engine.rerank_with_relevance_scoring(
+                        query=fixed_query,
+                        chunks=ranked,
+                        target_projects=detected_projects,
+                        top_k=10  # Get more for CrossEncoder
+                    )
                 
                 if reranked and reranking_engine.should_confidence_be_reduced(fixed_query, reranked[0]):
                     logger.warning("Re-ranking detected weak match, reducing confidence")
                     for chunk in reranked:
                         chunk["scores"]["confidence"] = "low"
+            
+            # Step 3.5: CrossEncoder Re-ranking (production only)
+            if reranked and cross_encoder and config.reranking.use_cross_encoder:
+                yield json.dumps({"type": "status", "stage": "cross_encoder", "message": "Applying deep learning reranker..."}) + "\n"
+                
+                with Timer(performance_monitor, "cross_encoder", {"chunks": len(reranked)}):
+                    try:
+                        # Add cross-encoder scores
+                        ce_reranked = cross_encoder.rerank(fixed_query, reranked, top_k=10)
+                        
+                        # Combine scores
+                        reranked = cross_encoder.combine_scores(
+                            ce_reranked,
+                            cross_encoder_weight=config.reranking.cross_encoder_weight,
+                            original_weight=config.reranking.original_score_weight
+                        )
+                        logger.info(f"CrossEncoder reranked {len(reranked)} chunks")
+                    except Exception as e:
+                        logger.warning(f"CrossEncoder failed, continuing without it: {e}")
+                        performance_monitor.record_error("cross_encoder")
 
-            # Guard check
+            # Step 3.5: CrossEncoder Re-ranking (production only)
+            if reranked and cross_encoder and config.reranking.use_cross_encoder:
+                yield json.dumps({"type": "status", "stage": "cross_encoder", "message": "Applying deep learning reranker..."}) + "\n"
+                
+                with Timer(performance_monitor, "cross_encoder", {"chunks": len(reranked)}):
+                    try:
+                        # Add cross-encoder scores
+                        ce_reranked = cross_encoder.rerank(fixed_query, reranked, top_k=10)
+                        
+                        # Combine scores
+                        reranked = cross_encoder.combine_scores(
+                            ce_reranked,
+                            cross_encoder_weight=config.reranking.cross_encoder_weight,
+                            original_weight=config.reranking.original_score_weight
+                        )
+                        logger.info(f"CrossEncoder reranked {len(reranked)} chunks")
+                    except Exception as e:
+                        logger.warning(f"CrossEncoder failed, continuing without it: {e}")
+                        performance_monitor.record_error("cross_encoder")
+            
+            # Step 4: Score Gate - Filter low relevance results
+            RELEVANCE_THRESHOLD = config.score_gate.relevance_threshold
+            
+            if reranked:
+                filtered_results = []
+                for chunk in reranked:
+                    # Get the best available score
+                    score = chunk.get("combined_score", 
+                            chunk.get("scores", {}).get("overall_score", 0))
+                    rerank_score = chunk.get("rerank_score", score)
+                    
+                    # Use the higher of available scores
+                    final_score = max(score, rerank_score)
+                    
+                    logger.info(f"Score gate check: {final_score:.3f} vs threshold {RELEVANCE_THRESHOLD} | File: {chunk.get('metadata', {}).get('file_path', 'unknown')[:50]}")
+                    
+                    if final_score >= RELEVANCE_THRESHOLD:
+                        filtered_results.append(chunk)
+                    else:
+                        logger.info(f"Filtered out low-relevance result: score={final_score:.3f}")
+                
+                reranked = filtered_results[:5]  # Keep top 5 after filtering
+                
+                logger.info(f"Score gate: {len(filtered_results)} results passed threshold (kept top 5)")
+                
+                if not reranked:
+                    logger.warning(f"Score gate: All results below {RELEVANCE_THRESHOLD} threshold")
+
+            # Guard check (updated message)
             if not reranked and not request.use_web_search:
                 response_data = {
-                    "response": "I couldn't find any specific information matching your query in the Atlas database. Please try broadening your search or enabling web search for current market data.",
+                    "response": f"I couldn't find any relevant information matching your query in the database. The available results had confidence scores below {RELEVANCE_THRESHOLD * 100}%, indicating they may not accurately answer your question.\n\nPlease try:\n• Rephrasing your question\n• Being more specific about the project or material\n• Enabling web search for current market data",
                     "sources": [],
                     "web_search_used": False
                 }
                 yield json.dumps({"type": "result", "data": response_data}) + "\n"
                 return
+            
+            # Step 5: PII Redaction (production only)
+            if reranked and pii_redactor and config.pii.enabled:
+                yield json.dumps({"type": "status", "stage": "pii_redaction", "message": "Sanitizing sensitive information..."}) + "\n"
+                
+                with Timer(performance_monitor, "pii_redaction", {"chunks": len(reranked)}):
+                    try:
+                        reranked = pii_redactor.redact_chunks(reranked)
+                        logger.info("PII redaction applied to chunks")
+                    except Exception as e:
+                        logger.warning(f"PII redaction failed, continuing without it: {e}")
+                        performance_monitor.record_error("pii_redaction")
 
-            # Step 4: Generation
+            # Step 6: Generation
             yield json.dumps({"type": "status", "stage": "generation", "message": "Synthesizing final answer..."}) + "\n"
             
-            answer_result = llm_manager.generate_answer(
-                query=fixed_query,
-                retrieved_chunks=reranked,
-                use_web_search=request.use_web_search
-            )
+            with Timer(performance_monitor, "llm_generation"):
+                answer_result = llm_manager.generate_answer(
+                    query=fixed_query,
+                    retrieved_chunks=reranked,
+                    use_web_search=request.use_web_search
+                )
 
             # Format chunks for response (similar to original code)
             unique_sources = {}
@@ -408,13 +597,46 @@ async def chat(request: ChatRequest):
                 "web_search_used": answer_result["web_search_used"]
             }
             
+            # Log pipeline performance
+            pipeline_duration = (time.time() - pipeline_start) * 1000
+            logger.info(f"Total pipeline duration: {pipeline_duration:.1f}ms")
+            
             yield json.dumps({"type": "result", "data": final_response}) + "\n"
             
         except Exception as e:
             logger.error(f"Stream error: {str(e)}", exc_info=True)
+            performance_monitor.record_error("pipeline")
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+
+@app.get("/api/performance")
+async def get_performance():
+    """
+    Get performance statistics for monitoring.
+    
+    Returns:
+        dict: Performance metrics
+    """
+    if not performance_monitor:
+        raise HTTPException(status_code=503, detail="Performance monitor not initialized")
+    
+    try:
+        stats = performance_monitor.get_stats()
+        breakdown = performance_monitor.get_pipeline_breakdown()
+        
+        return {
+            "stats": stats,
+            "pipeline_breakdown": breakdown,
+            "component_status": {
+                "cross_encoder": cross_encoder.get_stats() if cross_encoder else {"status": "disabled"},
+                "pii_redactor": pii_redactor.get_stats() if pii_redactor else {"status": "disabled"}
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting performance stats: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

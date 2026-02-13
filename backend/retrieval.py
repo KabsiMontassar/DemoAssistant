@@ -170,25 +170,26 @@ class RetrieverManager:
         boosted_score = base_score
         
         # SET WEIGHTS BASED ON QUERY INTENT
+        # Reduced from 3.0x to 1.2x to prevent score inflation
         if query_intent == QueryIntent.SPECIFICATION:
             # User asked for specific project + material: maximize exact matches
-            PROJECT_WEIGHT = 3.0
-            CATEGORY_WEIGHT = 3.0
+            PROJECT_WEIGHT = 1.25
+            CATEGORY_WEIGHT = 1.20
             logger.debug(f"Using SPECIFICATION weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         elif query_intent == QueryIntent.COMPARISON:
             # User comparing materials: reduce project emphasis, emphasize categories
-            PROJECT_WEIGHT = 1.2
-            CATEGORY_WEIGHT = 2.0
+            PROJECT_WEIGHT = 1.05
+            CATEGORY_WEIGHT = 1.15
             logger.debug(f"Using COMPARISON weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         elif query_intent == QueryIntent.CATEGORY:
             # User focused on material type: maximize category, minimize project
             PROJECT_WEIGHT = 1.0
-            CATEGORY_WEIGHT = 3.0
+            CATEGORY_WEIGHT = 1.20
             logger.debug(f"Using CATEGORY weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         else:
             # GENERAL: balanced approach
-            PROJECT_WEIGHT = 2.0
-            CATEGORY_WEIGHT = 1.5
+            PROJECT_WEIGHT = 1.10
+            CATEGORY_WEIGHT = 1.08
             logger.debug(f"Using GENERAL weights: project={PROJECT_WEIGHT}, category={CATEGORY_WEIGHT}")
         
         # Apply project weight if project is mentioned in query AND matches file path
@@ -304,15 +305,14 @@ class RetrieverManager:
             # Sort by boosted score
             retrieved_docs.sort(key=lambda x: x['score'], reverse=True)
             
-            # Normalize scores to 0-1 range based on max score
-            # This ensures the best match(es) get the highest score, others are proportionally lower
+            # Keep absolute scores (0-1 scale) - DO NOT normalize by max
+            # This preserves score variance and makes thresholding meaningful
+            # Scores now represent absolute relevance, not relative ranking
             if retrieved_docs:
-                max_score = max(doc['score'] for doc in retrieved_docs)
-                if max_score > 0:
-                    for doc in retrieved_docs:
-                        normalized_score = doc['score'] / max_score
-                        doc['score'] = round(normalized_score, 4)
-                        logger.debug(f"Normalized score for {doc['file_path']}: {normalized_score}")
+                for doc in retrieved_docs:
+                    # Clamp scores to 0-1 range (in case boosts pushed slightly over)
+                    doc['score'] = round(min(1.0, max(0.0, doc['score'])), 4)
+                    logger.debug(f"Absolute score for {doc['file_path']}: {doc['score']}")
             
             # Return top_k results
             retrieved_docs = retrieved_docs[:top_k]

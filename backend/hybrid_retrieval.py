@@ -109,18 +109,22 @@ class BM25:
 class HybridRetriever:
     """Combines semantic and keyword search for hybrid retrieval."""
     
-    def __init__(self, vector_weight: float = 0.6, keyword_weight: float = 0.4):
+    def __init__(self, vector_weight: float = 0.6, keyword_weight: float = 0.4, use_rrf: bool = True):
         """
         Initialize hybrid retriever.
         
         Args:
             vector_weight: Weight for vector similarity scores
             keyword_weight: Weight for BM25 keyword scores
+            use_rrf: Use Reciprocal Rank Fusion instead of simple weighted combination
         """
         self.vector_weight = vector_weight
         self.keyword_weight = keyword_weight
+        self.use_rrf = use_rrf
         self.bm25 = BM25()
         self._trained = False
+        
+        logger.info(f"HybridRetriever initialized (RRF: {use_rrf}, weights: {vector_weight}/{keyword_weight})")
     
     def train(self, chunks: List[Dict[str, Any]]):
         """
@@ -139,7 +143,7 @@ class HybridRetriever:
                     keyword_score: float,
                     normalize_keyword: bool = True) -> float:
         """
-        Combine vector and keyword scores.
+        Combine vector and keyword scores using weighted combination.
         
         Args:
             vector_score: Vector similarity score (0-1)
@@ -161,6 +165,63 @@ class HybridRetriever:
         # Weighted combination
         total_weight = self.vector_weight + self.keyword_weight
         return (self.vector_weight * v_score + self.keyword_weight * k_score) / total_weight
+    
+    def reciprocal_rank_fusion(self,
+                               chunks: List[Dict[str, Any]],
+                               vector_scores: List[float],
+                               bm25_scores: List[float],
+                               k: int = 60) -> List[Dict[str, Any]]:
+        """
+        Combine rankings using Reciprocal Rank Fusion (RRF).
+        RRF is more robust than score-based fusion for combining different ranking systems.
+        
+        Formula: RRF_score = Σ 1 / (k + rank_i)
+        
+        Args:
+            chunks: List of chunks
+            vector_scores: Vector similarity scores
+            bm25_scores: BM25 keyword scores
+            k: RRF constant (default: 60, standard in literature)
+            
+        Returns:
+            Chunks sorted by RRF score
+        """
+        # Create ranked lists
+        # Vector ranking (by score descending)
+        vector_ranked = sorted(enumerate(vector_scores), key=lambda x: x[1], reverse=True)
+        vector_ranks = {idx: rank + 1 for rank, (idx, _) in enumerate(vector_ranked)}
+        
+        # BM25 ranking (by score descending)
+        bm25_ranked = sorted(enumerate(bm25_scores), key=lambda x: x[1], reverse=True)
+        bm25_ranks = {idx: rank + 1 for rank, (idx, _) in enumerate(bm25_ranked)}
+        
+        # Calculate RRF scores
+        rrf_results = []
+        for i, chunk in enumerate(chunks):
+            vector_rank = vector_ranks.get(i, len(chunks) + 1)
+            bm25_rank = bm25_ranks.get(i, len(chunks) + 1)
+            
+            # RRF formula
+            rrf_score = (
+                self.vector_weight * (1.0 / (k + vector_rank)) +
+                self.keyword_weight * (1.0 / (k + bm25_rank))
+            )
+            
+            chunk_copy = chunk.copy()
+            chunk_copy["rrf_score"] = rrf_score
+            chunk_copy["vector_rank"] = vector_rank
+            chunk_copy["bm25_rank"] = bm25_rank
+            chunk_copy["vector_score"] = vector_scores[i]
+            chunk_copy["keyword_score"] = bm25_scores[i]
+            
+            rrf_results.append(chunk_copy)
+        
+        # Sort by RRF score (descending)
+        rrf_results.sort(key=lambda x: x["rrf_score"], reverse=True)
+        
+        logger.debug(f"RRF fusion: top score = {rrf_results[0]['rrf_score']:.4f}")
+        
+        return rrf_results
     
     def retrieve(self,
                 query: str,
@@ -190,24 +251,37 @@ class HybridRetriever:
         for idx, score in ranked:
             bm25_scores[idx] = score
         
-        # Combine scores
-        combined_results = []
-        for i, chunk in enumerate(chunks):
-            combined_score = self.hybrid_score(
-                vector_scores[i],
-                bm25_scores[i],
-                normalize_keyword=True
+        # Choose fusion method
+        if self.use_rrf:
+            # Use Reciprocal Rank Fusion
+            combined_results = self.reciprocal_rank_fusion(
+                chunks, vector_scores, bm25_scores, k=60
             )
+            # Use RRF score as hybrid_score
+            for result in combined_results:
+                result["hybrid_score"] = result["rrf_score"]
+        else:
+            # Use simple weighted combination
+            combined_results = []
+            for i, chunk in enumerate(chunks):
+                combined_score = self.hybrid_score(
+                    vector_scores[i],
+                    bm25_scores[i],
+                    normalize_keyword=True
+                )
+                
+                result = chunk.copy()
+                result["hybrid_score"] = combined_score
+                result["vector_score"] = vector_scores[i]
+                result["keyword_score"] = bm25_scores[i]
+                combined_results.append(result)
             
-            result = chunk.copy()
-            result["hybrid_score"] = combined_score
-            result["vector_score"] = vector_scores[i]
-            result["keyword_score"] = bm25_scores[i]
-            combined_results.append(result)
+            # Sort by combined score
+            combined_results.sort(key=lambda x: x["hybrid_score"], reverse=True)
         
-        # Sort by combined score
-        combined_results.sort(key=lambda x: x["hybrid_score"], reverse=True)
-        
-        logger.debug(f"Hybrid search returned {len(combined_results[:top_k])} results for query: {query}")
+        logger.debug(
+            f"Hybrid {'RRF' if self.use_rrf else 'weighted'} search returned "
+            f"{len(combined_results[:top_k])} results for query: {query[:50]}..."
+        )
         
         return combined_results[:top_k]

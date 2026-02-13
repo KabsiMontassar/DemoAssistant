@@ -15,3 +15,7 @@ httpx==0.25.2
 numpy<2.0.0
 openpyxl==3.1.2
 pypdf==3.17.1
+
+# Production components (optional - will lazy load)
+# Install with: pip install spacy && python -m spacy download en_core_web_sm
+spacy>=3.7.0  # For PII redaction

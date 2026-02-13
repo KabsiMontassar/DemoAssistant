@@ -8,7 +8,7 @@ Production-ready RAG-based AI assistant for material pricing queries with web se
 Frontend (Next.js/React)
     ↓ HTTP/REST
 Backend API (FastAPI)
-    ├─ OpenRouter API (Mistral LLM)
+    ├─ Mistral AI API (Mistral LLM)
     ├─ ChromaDB (Vector Database)
     ├─ Sentence Transformers (Embeddings)
     └─ Tavily API (Web Search)
@@ -22,7 +22,7 @@ demo-project/
 │   ├── main.py                # Main application entry point
 │   ├── embedding.py           # Document embedding and chunking
 │   ├── retrieval.py           # Vector similarity search
-│   ├── llm.py                 # LLM integration (OpenRouter)
+│   ├── llm.py                 # LLM integration (Mistral AI)
 │   ├── file_watcher.py        # Automatic file re-embedding
 │   └── requirements.txt       # Python dependencies
 │
@@ -67,9 +67,9 @@ demo-project/
 - Git (optional, for version control)
 
 ### API Keys (Free to obtain)
-1. **OpenRouter API** - for Mistral LLM access
-   - Sign up at https://openrouter.ai
-   - Get free credits for testing
+1. **Mistral AI API** - for direct LLM access
+   - Sign up at https://console.mistral.ai
+   - Get your API key from the API section
    
 2. **Tavily API** - for web search (optional)
    - Sign up at https://tavily.com
@@ -125,8 +125,8 @@ Create/update `.env` file in project root:
 
 ```env
 # LLM Configuration
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-LLM_MODEL=mistral-7b-instruct
+MISTRAL_API_KEY=your_mistral_api_key_here
+LLM_MODEL=mistral-medium
 LLM_TEMPERATURE=0.7
 LLM_MAX_TOKENS=2000
 
@@ -366,11 +366,11 @@ GET /api/stats
 
 **Error:** `Missing required environment variables`
 - **Solution:** Ensure `.env` file exists with valid API keys
-- **Check:** `OPENROUTER_API_KEY` is set
+- **Check:** `MISTRAL_API_KEY` is set
 
-**Error:** `Connection error: Cannot connect to OpenRouter API`
+**Error:** `Connection error: Cannot connect to Mistral API`
 - **Solution:** Verify API key is correct and internet connection is active
-- **Test:** Check key at https://openrouter.ai
+- **Test:** Check key at https://console.mistral.ai
 
 ### Queries return no results
 
@@ -438,9 +438,9 @@ GET /api/stats
 ### Cost Optimization
 
 **API Costs (approximate):**
-- OpenRouter: ~€0.0002-0.0006 per 1K tokens
+- Mistral AI: ~€0.0006-0.002 per 1K tokens (depends on model)
 - Tavily: Free tier includes 1000 searches/month
-- Demo cost: <€1-2 for full demonstration
+- Demo cost: <€2-5 for full demonstration
 
 ## Production Deployment
 
@@ -534,7 +534,7 @@ This project is provided as a demonstration and proof-of-concept.
 - ✅ Production-grade FastAPI backend
 - ✅ Modern Next.js React frontend
 - ✅ Vector embeddings with ChromaDB
-- ✅ LLM integration with OpenRouter (Mistral)
+- ✅ LLM integration with Mistral AI
 - ✅ Automatic file watching and re-embedding
 - ✅ Web search integration with Tavily
 - ✅ Complete error handling

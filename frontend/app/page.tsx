@@ -37,6 +37,7 @@ export default function Home() {
   const { openPreview } = usePreview()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState<string | null>(null)
   const [useWebSearch, setUseWebSearch] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [systemStatus, setSystemStatus] = useState<'checking' | 'healthy' | 'error'>('checking')
@@ -128,7 +129,10 @@ export default function Home() {
           try {
             const event: StreamEvent = JSON.parse(line)
 
-            if (event.type === 'result') {
+            if (event.type === 'status') {
+              setCurrentStatus(event.message || null)
+            } else if (event.type === 'result') {
+              setCurrentStatus(null)
               const data = event.data
               // Add assistant message with sources
               const assistantMessage: Message = {
@@ -324,6 +328,7 @@ export default function Home() {
             onSendMessage={handleSendMessage}
             disabled={loading || systemStatus === 'error'}
             isLoading={loading}
+            currentStatus={currentStatus}
             useWebSearch={useWebSearch}
             onWebSearchToggle={setUseWebSearch}
           />

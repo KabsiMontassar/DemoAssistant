@@ -1,0 +1,46 @@
+services:
+  backend:
+    image: regsistrydemo.azurecr.io/atlas-backend:latest
+    container_name: atlas-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - DATA_PATH=/app/data
+      - CHROMA_PATH=/app/data/chroma_db
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+      - TF_ENABLE_ONEDNN_OPTS=0
+    volumes:
+      - ./backend/data:/app/data
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+
+  frontend:
+    image: regsistrydemo.azurecr.io/atlas-frontend:latest
+    container_name: atlas-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_healthy
+
+networks:
+  default:
+    name: atlas-network
+    driver: bridge
+
+volumes:
+  data:
+    driver: local

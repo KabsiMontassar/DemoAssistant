@@ -518,8 +518,7 @@ async def view_file(path: str):
 async def _serve_file(path: str, as_attachment: bool = True):
     """Helper to serve files with correct headers and encoding."""
     try:
-        raw_data_path = os.getenv('DATA_PATH', './data/materials')
-        data_path = Path(raw_data_path).resolve()
+        data_path = _get_base_path().resolve()
         
         # Normalize slashes and remove leading slashes
         clean_path = path.replace('\\', '/').lstrip('/')

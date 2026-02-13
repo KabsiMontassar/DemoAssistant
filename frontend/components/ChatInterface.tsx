@@ -7,6 +7,7 @@ interface ChatInterfaceProps {
   onSendMessage: (message: string) => void
   disabled?: boolean
   isLoading?: boolean
+  currentStatus?: string | null
   useWebSearch?: boolean
   onWebSearchToggle?: (enabled: boolean) => void
 }
@@ -15,6 +16,7 @@ export default function ChatInterface({
   onSendMessage,
   disabled = false,
   isLoading = false,
+  currentStatus = null,
   useWebSearch = false,
   onWebSearchToggle,
 }: ChatInterfaceProps) {
@@ -66,7 +68,7 @@ export default function ChatInterface({
             <div className={`relative bg-white rounded-xl overflow-hidden transition-all duration-300 ${isFocused ? 'shadow-lg shadow-blue-100/50' : ''}`}>
               {/* Input Area */}
               <div className="flex items-start p-1 min-h-[56px]">
-              
+
                 {/* Textarea for Multi-line Support */}
                 <div className="flex-1 relative">
                   <textarea
@@ -94,7 +96,7 @@ export default function ChatInterface({
 
                   {/* Loading Indicator */}
                   {isLoading && (
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2 bg-white/80 backdrop-blur-sm pl-2">
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-3 bg-white/80 backdrop-blur-sm pl-2">
                       <div className="flex items-center gap-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0ms' }}></div>
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '150ms' }}></div>

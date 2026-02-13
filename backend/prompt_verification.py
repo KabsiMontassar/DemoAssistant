@@ -13,6 +13,26 @@ from difflib import SequenceMatcher
 logger = logging.getLogger(__name__)
 
 
+def _levenshtein_distance(s1: str, s2: str) -> int:
+    """Calculate Levenshtein distance between two strings."""
+    if len(s1) < len(s2):
+        return _levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
+
+
 class PromptVerifier:
     """
     Verifies and fixes user prompts before they enter the RAG pipeline.
@@ -38,21 +58,8 @@ class PromptVerifier:
             # Maybe data_path IS already the materials directory
             self.materials_path = self.data_path
         
-        # Common spelling corrections for domain-specific terms
-        self.spelling_corrections = {
-            'whaat': 'what',
-            'priiice': 'price',
-            'priice': 'price',
-            'wo od': 'wood',
-            'concreete': 'concrete',
-            'mettal': 'metal',
-            'steeel': 'steel',
-            'aluminium': 'aluminum',
-            'projecct': 'project',
-            'materrial': 'material',
-            'speccification': 'specification',
-            'quaantity': 'quantity',
-        }
+        # Static spelling corrections - minimal set, let auto-fix handle the rest
+        self.spelling_corrections = {}
         
         # Material categories
         self.material_categories = {
@@ -124,7 +131,9 @@ class PromptVerifier:
     
     def _fix_spelling(self, text: str) -> str:
         """
-        Fix common spelling mistakes using predefined corrections.
+        Dynamically fix spelling mistakes using fuzzy matching against entities
+        that exist in the system (project names, materials only).
+        NO static word lists. Focuses on correcting domain entity typos.
         
         Args:
             text: Input text
@@ -136,16 +145,69 @@ class PromptVerifier:
         corrected_words = []
         
         for word in words:
-            # Check lowercase version
             lower_word = word.lower()
+            if len(lower_word) == 0:
+                corrected_words.append(word)
+                continue
             
-            # Direct spelling correction
-            if lower_word in self.spelling_corrections:
-                corrected = self.spelling_corrections[lower_word]
-                # Preserve original capitalization pattern
+            # Build candidate words from system entities only
+            candidates = {}
+            
+            # Material categories (highest priority)
+            for material in self.material_categories:
+                candidates[material] = 1000
+            
+            # Project names - full and component parts
+            for project in self.project_names.values():
+                candidates[project.lower()] = 900
+                
+                # Extract individual words from camelCase
+                spaced = re.sub(r'([a-z])([A-Z])', r'\1 \2', project).lower()
+                for part in spaced.split():
+                    if len(part) >= 2:  # Words of 2+ chars
+                        candidates[part] = 850
+                
+                # Also add original with spaces if it has multiple words
+                if ' ' in project.lower():
+                    for word_part in project.lower().split():
+                        if len(word_part) >= 2:
+                            candidates[word_part] = 850
+            
+            best_match = None
+            best_score = 0.0
+            word_len = len(lower_word)
+            
+            # Only correct if word is NOT already a known entity
+            if lower_word not in candidates:
+                for candidate, priority in candidates.items():
+                    candidate_len = len(candidate)
+                    distance = _levenshtein_distance(lower_word, candidate)
+                    max_len = max(word_len, candidate_len)
+                    
+                    # Similarity score (0-1, higher is better)
+                    similarity = (1.0 - distance / max_len) if max_len > 0 else 0
+                    
+                    # More lenient thresholds to catch typos in entity names
+                    # Shorter words allow more typos proportionally
+                    if word_len <= 3:
+                        min_similarity = 0.60  # Allow 1-2 char difference in very short words
+                    elif word_len <= 6:
+                        min_similarity = 0.65  # 1-2 char difference in medium words
+                    else:
+                        min_similarity = 0.70  # Standard threshold for longer words
+                    
+                    if similarity >= min_similarity:
+                        weighted_score = similarity * (priority / 1000)
+                        if weighted_score > best_score:
+                            best_score = weighted_score
+                            best_match = candidate
+            
+            # Apply correction if confidence is reasonable
+            if best_match and best_score > 0.6:
                 if word[0].isupper() and len(word) > 1:
-                    corrected = corrected.capitalize()
-                corrected_words.append(corrected)
+                    best_match = best_match.capitalize()
+                corrected_words.append(best_match)
+                logger.debug(f"Auto-corrected '{word}' to '{best_match}' (score: {best_score:.3f})")
             else:
                 corrected_words.append(word)
         
@@ -226,6 +288,46 @@ class PromptVerifier:
         
         return True, None
     
+    def _is_domain_relevant(self, query: str, detected_projects: list, detected_materials: list) -> tuple[bool, Optional[str]]:
+        """
+        Check if the query is relevant to the material pricing domain.
+        
+        Queries are domain-relevant if they:
+        - Mention a project OR
+        - Mention a material category OR  
+        - Contain domain-specific keywords (price, cost, specification, etc.)
+        
+        Args:
+            query: The query string (normalized)
+            detected_projects: List of detected project names
+            detected_materials: List of detected material categories
+            
+        Returns:
+            Tuple of (is_relevant, rejection_message)
+        """
+        query_lower = query.lower()
+        
+        # Domain keywords that indicate material/pricing questions
+        domain_keywords = {
+            'price', 'cost', 'fee', 'rate', 'per', 'specification', 'spec',
+            'dimension', 'size', 'weight', 'property', 'material', 'supplier',
+            'quote', 'bid', 'estimate', 'lead time', 'availability', 'stock',
+            'quality', 'grade', 'finish', 'strength', 'capacity', 'mpa',
+            'compare', 'comparison', 'difference', 'versus', 'vs', 'vs.',
+            'project', 'construction', 'building', 'order', 'purchase'
+        }
+        
+        # Check if query has domain keywords
+        has_domain_keywords = any(keyword in query_lower for keyword in domain_keywords)
+        
+        # Domain relevant if: has projects OR has materials OR has domain keywords
+        is_relevant = bool(detected_projects) or bool(detected_materials) or has_domain_keywords
+        
+        if not is_relevant:
+            return False, None  # Not relevant, will handle in main method
+        
+        return True, None
+    
     def verify_and_fix(self, query: str) -> Dict[str, any]:
         """
         Main method to verify and fix a user query.
@@ -240,6 +342,7 @@ class PromptVerifier:
                 - changes_made: List of changes applied
                 - is_valid: Whether the query passed validation
                 - error: Error message if invalid
+                - is_domain_relevant: Whether query relates to projects/materials
         """
         original_query = query
         changes_made = []
@@ -253,7 +356,9 @@ class PromptVerifier:
                 'original_query': original_query,
                 'changes_made': [],
                 'is_valid': False,
-                'error': error
+                'error': error,
+                'is_domain_relevant': False,
+                'detected_projects': []
             }
         
         # Step 2: Clean whitespace
@@ -277,7 +382,13 @@ class PromptVerifier:
             logger.debug(f"Entities normalized: '{query}' -> '{entity_normalized}'")
         query = entity_normalized
         
-        # Step 5: Proper capitalization
+        # Extract detected materials
+        detected_materials = [c for c in self.material_categories if c in query.lower()]
+        
+        # Step 5: Check domain relevance - BEFORE capitalization
+        is_domain_relevant, _ = self._is_domain_relevant(query, detected_projects, detected_materials)
+        
+        # Step 6: Proper capitalization
         capitalized = self._capitalize_properly(query)
         if capitalized != query:
             changes_made.append('capitalization_fixed')
@@ -297,6 +408,7 @@ class PromptVerifier:
             'changes_made': changes_made,
             'is_valid': True,
             'error': None,
+            'is_domain_relevant': is_domain_relevant,
             'detected_projects': detected_projects
         }
     

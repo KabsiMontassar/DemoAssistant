@@ -269,6 +269,17 @@ async def chat(request: ChatRequest):
 
             fixed_query = verification_result['fixed_query']
             detected_projects = verification_result.get('detected_projects', [])
+            is_domain_relevant = verification_result.get('is_domain_relevant', True)
+            
+            # Check if query is about the material/project domain
+            if not is_domain_relevant:
+                response_data = {
+                    "response": "I'm specialized in answering questions about material pricing and project information in this database. Feel free to ask me about:\n\n• Material prices (concrete, wood, metal, stone)\n• Project details and specifications\n• Supplier information\n• Material availability and lead times\n• Comparisons between different materials\n\nHow can I help you with your project or material needs?",
+                    "sources": [],
+                    "web_search_used": False
+                }
+                yield json.dumps({"type": "result", "data": response_data}) + "\n"
+                return
             
             if verification_result['changes_made']:
                 changes = ", ".join(verification_result['changes_made'])

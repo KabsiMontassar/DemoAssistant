@@ -118,8 +118,14 @@ class ScoringEngine:
         score = 0.5  # Base score for any result
         
         # Boost for project match
-        if query_project and metadata.get("project_name", "").lower() == query_project.lower():
-            score += 0.25
+        if query_project:
+            metadata_project = metadata.get("project_name", "").lower()
+            query_proj_lower = query_project.lower()
+            if metadata_project == query_proj_lower:
+                score += 0.35  # Strong boost for matching project
+            else:
+                # Penalize non-matching projects when specific project was requested
+                score -= 0.2  # Penalty for wrong project
         
         # Boost for material match
         if query_material and metadata.get("material", "").lower() == query_material.lower():
@@ -130,7 +136,8 @@ class ScoringEngine:
         if semantic_type in ["price", "specification"]:
             score += 0.05
         
-        return min(1.0, score)
+        # Clamp score between 0 and 1
+        return min(1.0, max(0.0, score))
     
     @staticmethod
     def _compute_recency_score(metadata: Dict[str, Any]) -> float:

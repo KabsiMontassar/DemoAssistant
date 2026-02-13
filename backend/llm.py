@@ -31,13 +31,13 @@ class LLMManager:
     def __init__(self):
         """Initialize LLM manager with API credentials and configuration."""
         self.api_key = os.getenv('OPENROUTER_API_KEY')
-        if not self.api_key:
+        if not self.api_key: 
             raise ValueError("OPENROUTER_API_KEY environment variable not set")
         
         self.model = os.getenv('LLM_MODEL', self.DEFAULT_MODEL)
         self.temperature = float(os.getenv('LLM_TEMPERATURE', '0.7'))
         self.max_tokens = int(os.getenv('LLM_MAX_TOKENS', '2000'))
-        
+         
         # Web search configuration
         self.web_search_enabled = os.getenv('WEB_SEARCH_ENABLED', 'true').lower() == 'true'
         tavily_key = os.getenv('TAVILY_API_KEY')

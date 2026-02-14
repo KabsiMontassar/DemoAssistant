@@ -21,10 +21,17 @@ RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/wh
 # Copy application code (excluding chroma_db per .dockerignore)
 COPY . .
 
-# Create necessary directories for data persistence
+# Create necessary directories and copy material data
 # ChromaDB will create a fresh database on first run
-RUN mkdir -p /app/data/materials /app/data/chroma_db && \
+RUN mkdir -p /app/data/chroma_db && \
     chmod -R 777 /app/data
+
+# Verify materials directory exists and has content
+RUN if [ -d "data/materials" ]; then \
+        echo "✓ Materials directory found with $(find data/materials -type f | wc -l) files"; \
+    else \
+        echo "⚠ Warning: No materials directory found - will run with empty database"; \
+    fi
 
 # Expose port
 EXPOSE 8000

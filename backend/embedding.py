@@ -47,15 +47,20 @@ class EmbeddingManager:
         self.chunk_size = 500  # Characters per chunk
         self.chunk_overlap = 100  # Overlap between chunks
         
-        # Initialize ChromaDB client
+        # Initialize ChromaDB client with timeout protection
         self.chroma_path.mkdir(parents=True, exist_ok=True)
-        self.client = chromadb.PersistentClient(path=str(self.chroma_path))
-        
-        # Get or create collection
-        self.collection = self.client.get_or_create_collection(
-            name="material_pricing",
-            metadata={"hnsw:space": "cosine"}
-        )
+        try:
+            self.client = chromadb.PersistentClient(path=str(self.chroma_path))
+            
+            # Get or create collection
+            self.collection = self.client.get_or_create_collection(
+                name="material_pricing",
+                metadata={"hnsw:space": "cosine"}
+            )
+            logger.info("✓ ChromaDB initialized successfully")
+        except Exception as e:
+            logger.error(f"ChromaDB initialization failed: {e}")
+            raise RuntimeError(f"Failed to initialize vector database: {e}")
         
         # Load embedding model (downloads on first run, ~400MB)
         model_name = os.getenv('EMBEDDING_MODEL', 'all-MiniLM-L6-v2')

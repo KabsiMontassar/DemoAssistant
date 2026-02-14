@@ -88,9 +88,13 @@ async def lifespan(app: FastAPI):
         chroma_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"✓ Data directories verified: {data_path}, {chroma_path}")
         
-        # Initialize prompt verifier
-        prompt_verifier = PromptVerifier()
-        logger.info("✓ Prompt verifier initialized")
+        # Initialize prompt verifier with error boundary
+        try:
+            prompt_verifier = PromptVerifier()
+            logger.info("\u2713 Prompt verifier initialized")
+        except Exception as e:
+            logger.error(f"Prompt verifier initialization failed: {e}. Continuing without prompt verification.")
+            prompt_verifier = None
         
         # Initialize content extraction
         content_extractor = ContentExtractor()
@@ -266,54 +270,61 @@ async def chat(request: ChatRequest):
     if len(request.query) > 2000:
         raise HTTPException(status_code=400, detail="Query too long (max 2000 characters)")
     
-    # Verify managers are initialized
-    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine, prompt_verifier]):
+    # Verify managers are initialized (allow operation without prompt_verifier)
+    if not all([embedding_manager, retriever_manager, llm_manager, ranking_engine, reranking_engine]):
         raise HTTPException(status_code=503, detail="Service not fully initialized")
 
     async def event_generator():
         try:
             logger.info(f"Processing query: {request.query[:100]}...")
             
-            # Step 0: Verify and fix prompt
-            yield json.dumps({"type": "status", "stage": "verification", "message": "Verifying and cleaning prompt..."}) + "\n"
-            await asyncio.sleep(0.1) # Tiny yield to ensure frontend receives it
+            # Step 0: Verify and fix prompt (skip if verifier not available)
+            fixed_query = request.query
+            detected_projects = []
+            is_domain_relevant = True
             
-            verification_result = prompt_verifier.verify_and_fix(request.query)
-            
-            if not verification_result['is_valid']:
-                error_msg = verification_result['error']
-                yield json.dumps({"type": "error", "message": error_msg}) + "\n"
-                return
+            if prompt_verifier:
+                yield json.dumps({"type": "status", "stage": "verification", "message": "Verifying and cleaning prompt..."}) + "\n"
+                await asyncio.sleep(0.1) # Tiny yield to ensure frontend receives it
+                
+                verification_result = prompt_verifier.verify_and_fix(request.query)
+                
+                if not verification_result['is_valid']:
+                    error_msg = verification_result['error']
+                    yield json.dumps({"type": "error", "message": error_msg}) + "\n"
+                    return
 
-            fixed_query = verification_result['fixed_query']
-            detected_projects = verification_result.get('detected_projects', [])
-            is_domain_relevant = verification_result.get('is_domain_relevant', True)
-            
-            # Check if query is about the material/project domain
-            if not is_domain_relevant:
-                response_data = {
-                    "response": "I'm specialized in answering questions about material pricing and project information in this database. Feel free to ask me about:\n\n• Material prices (concrete, wood, metal, stone)\n• Project details and specifications\n• Supplier information\n• Material availability and lead times\n• Comparisons between different materials\n\nHow can I help you with your project or material needs?",
-                    "sources": [],
-                    "web_search_used": False
-                }
-                yield json.dumps({"type": "result", "data": response_data}) + "\n"
-                return
-            
-            if verification_result['changes_made']:
-                changes = ", ".join(verification_result['changes_made'])
-                yield json.dumps({
-                    "type": "status", 
-                    "stage": "verification_complete", 
-                    "message": f"Fixed prompt: {fixed_query}",
-                    "details": changes
-                }) + "\n"
-                logger.info(f"Fixed: '{fixed_query}'")
+                fixed_query = verification_result['fixed_query']
+                detected_projects = verification_result.get('detected_projects', [])
+                is_domain_relevant = verification_result.get('is_domain_relevant', True)
+                
+                # Check if query is about the material/project domain
+                if not is_domain_relevant:
+                    response_data = {
+                        "response": "I'm specialized in answering questions about material pricing and project information in this database. Feel free to ask me about:\n\n• Material prices (concrete, wood, metal, stone)\n• Project details and specifications\n• Supplier information\n• Material availability and lead times\n• Comparisons between different materials\n\nHow can I help you with your project or material needs?",
+                        "sources": [],
+                        "web_search_used": False
+                    }
+                    yield json.dumps({"type": "result", "data": response_data}) + "\n"
+                    return
+                
+                if verification_result['changes_made']:
+                    changes = ", ".join(verification_result['changes_made'])
+                    yield json.dumps({
+                        "type": "status", 
+                        "stage": "verification_complete", 
+                        "message": f"Fixed prompt: {fixed_query}",
+                        "details": changes
+                    }) + "\n"
+                    logger.info(f"Fixed: '{fixed_query}'")
 
             # Step 1: Retrieval
             yield json.dumps({"type": "status", "stage": "retrieval", "message": "Searching knowledge base..."}) + "\n"
             
             # Extract material categories from prompt_verifier if available
-            detected_categories = [c for c in prompt_verifier.material_categories if c in fixed_query.lower()]
+            detected_categories = []
+            if prompt_verifier:
+                detected_categories = [c for c in prompt_verifier.material_categories if c in fixed_query.lower()]
             
             retrieved = retriever_manager.retrieve(
                 query=fixed_query, 

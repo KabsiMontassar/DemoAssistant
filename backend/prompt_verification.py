@@ -67,10 +67,13 @@ class PromptVerifier:
             'copper', 'brass', 'iron', 'marble', 'granite', 'limestone'
         }
         
-        # Load project names from filesystem
-        self.project_names = self._load_project_names()
-        
-        logger.info(f"Prompt verifier initialized with {len(self.project_names)} projects")
+        # Load project names from filesystem (with error handling)
+        try:
+            self.project_names = self._load_project_names()
+            logger.info(f"Prompt verifier initialized with {len(self.project_names)} projects")
+        except Exception as e:
+            logger.error(f"Failed to load project names: {e}. Continuing with empty project list.")
+            self.project_names = {}
     
     def _load_project_names(self) -> Dict[str, str]:
         """
@@ -83,7 +86,11 @@ class PromptVerifier:
         project_mapping = {}
         
         if not self.materials_path.exists():
-            logger.warning(f"Materials path does not exist: {self.materials_path}")
+            logger.warning(f"Materials path does not exist: {self.materials_path}. Running without project name validation.")
+            return project_mapping
+        
+        if not self.materials_path.is_dir():
+            logger.warning(f"Materials path is not a directory: {self.materials_path}. Running without project name validation.")
             return project_mapping
         
         try:

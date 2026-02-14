@@ -43,8 +43,8 @@ class LLMManager:
         tavily_key = os.getenv('TAVILY_API_KEY')
         self.tavily_client = TavilyClient(api_key=tavily_key) if tavily_key and self.web_search_enabled else None
         
-        # HTTP client with timeout
-        self.client = httpx.Client(timeout=30.0)
+        # HTTP client with timeout - use context manager pattern
+        self.client = None
         
         logger.info(f"LLM Manager initialized with OpenRouter model: {self.model}")
         if self.tavily_client:
@@ -279,12 +279,13 @@ Provide a factual answer based ONLY on the context blocks above. Prioritize Proj
                 "top_p": 0.9
             }
             
-            # Make API call
-            response = self.client.post(
-                f"{self.API_BASE}/chat/completions",
-                headers=headers,
-                json=payload
-            )
+            # Make API call with fresh client (prevents connection leaks)
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(
+                    f"{self.API_BASE}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
             
             # Handle API errors
             if response.status_code != 200:
@@ -343,8 +344,5 @@ Provide a factual answer based ONLY on the context blocks above. Prioritize Proj
             raise
     
     def __del__(self):
-        """Clean up HTTP client on deletion."""
-        try:
-            self.client.close()
-        except:
-            pass
+        """Clean up resources on deletion."""
+        pass  # No persistent client to close

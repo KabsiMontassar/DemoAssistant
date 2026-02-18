@@ -1,6 +1,8 @@
 services:
   backend:
-    image: regsistrydemo.azurecr.io/atlas-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: atlas-backend
     restart: always
     ports:
@@ -25,7 +27,11 @@ services:
       start_period: 180s
 
   frontend:
-    image: regsistrydemo.azurecr.io/atlas-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     container_name: atlas-frontend
     restart: always
     ports:

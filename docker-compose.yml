@@ -6,7 +6,7 @@ services:
     container_name: atlas-backend
     restart: always
     ports:
-      - "8000:8000"
+      - "31874:8000"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
@@ -31,13 +31,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:31874}
     container_name: atlas-frontend
     restart: always
     ports:
-      - "3000:3000"
+      - "47291:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:31874}
       - NODE_ENV=production
     depends_on:
       backend:
